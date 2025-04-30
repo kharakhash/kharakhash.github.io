@@ -1,20 +1,293 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>kharakhash home page</title>
-    <style>
-        body {
-            background-color: black;
-        }
-
-        h1 {
-            color: white;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>n/2</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; display: flex; flex-direction: column; align-items: center; background: #b0b0b000; }
+    h1 { margin-top: 80px; }
+    #game { display: grid; grid-template-columns: repeat(4, 80px); gap: 12px; margin-top: 20px; }
+    .cell {
+      width: 80px;
+      height: 80px;
+      background: #2037cf3c;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: regular;
+      border-radius: 10%;
+      transition: transform 0.5s ease, background 0.5s ease, opacity 0.5s ease;
+    }
+    .cell[data-value] {
+      color: #ffffff;
+    }
+    .cell[data-value="128"] { background: #1202c4; }
+    .cell[data-value="64"] { background: #1202c4; }
+    .cell[data-value="32"] { background: #0449de; }
+    .cell[data-value="16"] { background: #0449de; }
+    .cell[data-value="8"] { background: #3b79ff; }
+    .cell[data-value="4"] { background: #3b79ff; }
+    .cell[data-value="2"] { background: #eb34b7; }
+  </style>
 </head>
 <body>
-    <h1>Hello </h1>
+  <h1>n/2</h1>
+  <div>Score: <span id="score">0</span></div>
+  <div> <button onclick="restartGame()">Restart</button> <spacing> </spacing> <button onclick="undo()">Undo</button> </div>
+  <div> </div>
+  <div id="game"></div>
+
+  <script>
+    function delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    const SIZE = 4;
+    const game = document.getElementById('game');
+    const scoreDisplay = document.getElementById('score');
+    let grid = [];
+    let history = [];
+    let score = 0;
+    let twoTimers = {};
+    let isProcessing = false;
+
+    function restartGame() {
+      grid = [];
+      history = [];
+      score = 0;
+      twoTimers = {};
+      isProcessing = false;
+      game.innerHTML = '';
+      createGrid();
+    }
+
+    function createGrid() {
+      for (let r = 0; r < SIZE; r++) {
+        grid[r] = [];
+        for (let c = 0; c < SIZE; c++) {
+          grid[r][c] = null;
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.id = `cell-${r}-${c}`;
+          game.appendChild(cell);
+        }
+      }
+      placeInitialTiles();
+      render();
+    }
+
+    function placeInitialTiles() {
+      const allCells = [];
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          allCells.push([r, c]);
+        }
+      }
+      for (let i = allCells.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allCells[i], allCells[j]] = [allCells[j], allCells[i]];
+      }
+      grid[allCells[0][0]][allCells[0][1]] = 128;
+      grid[allCells[1][0]][allCells[1][1]] = 8;
+      grid[allCells[2][0]][allCells[2][1]] = 4;
+    }
+
+    function spawnTile() {
+      const empty = [];
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          if (grid[r][c] === null) empty.push([r, c]);
+        }
+      }
+      if (empty.length === 0) return;
+      const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+      const rand = Math.random();
+      const value = rand < 0.1 ? 16 : 8 ; ///(rand < 0.01 ? 8 : 4);
+      grid[r][c] = value;
+    }
+
+    function maybeRemoveSpecialTiles() {
+      const sixteenTiles = [];
+      const eightTiles = [];
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          if (grid[r][c] === 1) sixteenTiles.push([r, c]);
+          if (grid[r][c] === 8) eightTiles.push([r, c]);
+        }
+      }
+
+      if (Math.random() < 0.0 && sixteenTiles.length > 0) {
+        const [r, c] = sixteenTiles[Math.floor(Math.random() * sixteenTiles.length)];
+        grid[r][c] = null;
+      }
+
+      let count = 0;
+      if (Math.random() < 0.7) count++;
+      if (Math.random() < 0.7) count++;
+      for (let i = 0; i < count && eightTiles.length > 0; i++) {
+        const idx = Math.floor(Math.random() * eightTiles.length);
+        const [r, c] = eightTiles.splice(idx, 1)[0];
+        grid[r][c] = null;
+      }
+    }
+
+    function render() {
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          const cell = document.getElementById(`cell-${r}-${c}`);
+          if (!cell) continue;
+          const val = grid[r][c];
+          if (val === 1 && twoTimers[`${r},${c}`] === 0) {
+            cell.textContent = '99';
+            cell.style.opacity = '1';
+          } else {
+            cell.textContent = val ? val : '';
+            cell.style.opacity = val ? '' : '';
+          }
+          if (val !== null) {
+            cell.dataset.value = val;
+          } else {
+            delete cell.dataset.value;
+          }
+        }
+      }
+      scoreDisplay.textContent = score;
+    }
+
+    function cloneGrid(g) {
+      return g.map(row => row.slice());
+    }
+
+    function saveHistory() {
+      history.unshift({ grid: cloneGrid(grid), twoTimers: { ...twoTimers }, score });
+      if (history.length > 3) history.pop();
+    }
+
+    function undo() {
+      if (history.length > 0) {
+        const last = history.shift();
+        grid = cloneGrid(last.grid);
+        twoTimers = { ...last.twoTimers };
+        score = last.score;
+        render();
+      }
+    }
+
+    function move(dir) {
+      if (isProcessing) return;
+      isProcessing = true;
+      saveHistory();
+      let changed = false;
+      let deltas = {
+        'ArrowUp': [-1, 0], 'ArrowDown': [1, 0],
+        'ArrowLeft': [0, -1], 'ArrowRight': [0, 1]
+      };
+      let [dr, dc] = deltas[dir];
+      let order = [];
+
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          order.push([r, c]);
+        }
+      }
+      if (dr > 0 || dc > 0) order.reverse();
+
+      const newGrid = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+
+      for (let [r, c] of order) {
+        let val = grid[r][c];
+       if (!val || val <= 2) continue;
+        let nr = r + dr;
+        let nc = c + dc;
+
+        if (inBounds(nr, nc) && grid[nr][nc] === null) {
+          let part = val / 2;
+          let fr = r + dr;
+          let fc = c + dc;
+          while (inBounds(fr + dr, fc + dc) && grid[fr + dr][fc + dc] === null && newGrid[fr + dr][fc + dc] === null) {
+            fr += dr;
+            fc += dc;
+          }
+
+          newGrid[fr][fc] = part;
+          newGrid[r][c] = part;
+          if (part === 2) {
+            twoTimers[`${fr},${fc}`] = 1;
+            twoTimers[`${r},${c}`] = 1;
+          }
+          changed = true;
+        } else {
+          let tr = r, tc = c;
+          while (true) {
+            let nextR = tr + dr;
+            let nextC = tc + dc;
+            if (inBounds(nextR, nextC) && newGrid[nextR][nextC] === null) {
+              tr = nextR;
+              tc = nextC;
+            } else break;
+          }
+          newGrid[tr][tc] = val;
+          if (tr !== r || tc !== c) changed = true;
+        }
+      }
+
+      grid = newGrid;
+
+      for (const key in twoTimers) {
+        if (twoTimers[key] === 1) {
+          twoTimers[key] = 1;
+        } else {
+          const [r, c] = key.split(',').map(Number);
+          if (grid[r][c] === 2) {
+            grid[r][c] = null;
+            score += 128;
+          }
+          delete twoTimers[key];
+        }
+      }
+
+      maybeRemoveSpecialTiles();
+      if (changed) spawnTile();
+      render();
+      isProcessing = false;
+    }
+
+    function inBounds(r, c) {
+      return r >= 0 && r < SIZE && c >= 0 && c < SIZE;
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+        e.preventDefault();
+        move(e.key);
+      }
+    });
+
+    let touchStartX = null;
+    let touchStartY = null;
+
+    window.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    });
+
+    window.addEventListener('touchend', (e) => {
+      if (touchStartX === null || touchStartY === null) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 30) move('ArrowRight');
+        else if (dx < -30) move('ArrowLeft');
+      } else {
+        if (dy > 30) move('ArrowDown');
+        else if (dy < -30) move('ArrowUp');
+      }
+      touchStartX = null;
+      touchStartY = null;
+    });
+
+    createGrid();
+  </script>
 </body>
 </html>
