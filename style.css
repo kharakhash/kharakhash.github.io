@@ -287,11 +287,10 @@ button {
 #settingsContainer {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   background: var(--bg-main);
   color: var(--text-main);
   font-size: clamp(16px, 2.5vmin, 18px); /* Адаптивный размер шрифта */
-  padding: 1rem; /* Добавлено для отступов */
   min-height: 100dvh; /* Изменено с height на min-height */
 }
 
