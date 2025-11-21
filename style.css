@@ -98,11 +98,6 @@ body {
   font-size: clamp(16px, 2.5vmin, 18px); /* Адаптивный размер шрифта */
 }
 
-#buttonsContainer,
-#buttonContainer {
-  /* Эти стили теперь наследуются от .fl-x-row-cow-container */
-}
-
   #checkboxContainer input[type="checkbox"] {
     cursor: pointer;
   }
