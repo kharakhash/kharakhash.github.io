@@ -3,65 +3,53 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>0000</title>
+  <title>4321</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="gameContainer">
-    <div id="buttonsContainer1">
-      <button id="settingsBtn">settings</button>
-      <button id="restartBtn">restart</button>
+  <main class="app-container">
+    <section id="gameContainer" class="game-container">
+      <div id="buttonsContainer" class="fl-x-row-cow-container">
+        <button id="settingsBtn">set</button>
+        <button id="statisticsBtn">stat</button>
+        <button id="restartBtn">re</button>
       </div>
-    <div id="scoreContainer">
-      <span>moves: <span id="moves">0</span></span>
-      <span>score: <span id="score">0</span></span>
-      <span>⚡: <span id="efficiency">0.00</span></span>
-    </div> 
-    <div id="game"></div>
-    <div id="buttonsContainer">
-      <button id="undoBtn">undo</button>
+      <div id="scoreContainer" class="fl-x-row-cow-container">
+         <span>moves: <span id="moves">0</span></span>
+         <span>score: <span id="score">0</span></span>
       </div>
-    </div>
-  <div id="settingsContainer" class="hidden">
-    <div id="sizeOptions">
-      <div class="size-square" data-size="4"><span>4x4</span></div>
-      <div class="size-square" data-size="5"><span>5x5</span></div>
-      <div class="size-square" data-size="7"><span>7x7</span></div>
-      <div class="size-square" data-size="9"><span>9x9</span></div>
-      <div class="size-square" data-size="11"><span>11x11</span></div>
+      <div id="game"></div>
+      <div id="buttonContainer" class="fl-x-row-cow-container">
+        <button id="undoBtn">undo</button>
       </div>
-    <div id="settingsMedium">
-      <div class="switcher">
-        <input type="checkbox" id="themeToggleBtn">
-        <label for="themeToggleBtn" class="slider"></label>
-        <span>switch theme</span>
+    </section>
+    <section id="settingsContainer" class="settings-container hidden">
+      <div id="sizeOptions">
+        <div class="size-square" data-size="4"><span>4x4</span></div>
+        <div class="size-square" data-size="5"><span>5x5</span></div>
+        <div class="size-square" data-size="7"><span>7x7</span></div>
       </div>
-      <div class="switcher">
-        <input type="checkbox" id="toggleDataValue" checked="">
-        <label for="toggleDataValue" class="slider"></label>
-        <span>show values</span>
+      <div id="settingsMedium">
+        <div class="switcher">
+          <input type="checkbox" id="themeToggleBtn">
+          <label for="themeToggleBtn" class="slider"></label>
+          <span>switch theme</span>
+        </div>
+        <div class="switcher">
+          <input type="checkbox" id="toggleDataValue" checked="">
+          <label for="toggleDataValue" class="slider"></label>
+          <span>show values</span>
+        </div>
       </div>
+      <div id="buttonsContainer">
+        <button id="saveSettingsBtn">apply</button>
+        <button id="cancelSettingsBtn">back</button>
       </div>
-    <div id="settingsBottom">
-      <button id="saveSettingsBtn">apply</button>
-      <button id="cancelSettingsBtn">back</button>
-      </div>
-      </div>
-    </div>
-  <div id="tutorialContainer" class="hidden">
-    <div id="tutorialSliderContainer" style="margin: 20px 0; display: flex; align-items: center; gap: 16px;">
-      <span>1</span>
-      <input type="range" id="tutorialSlider" min="1" max="5" step="1" value="1">
-      <span>2</span>
-      <span>3</span>
-      </div>
-    <div id="tutorialGrid" class="tutorial-grid"></div>
-    <div id="tutorialButtons">
-      <button id="tutorialOkBtn">ok</button>
-      <button id="tutorialNextBtn">next</button>
-    </div>
-</div>  
+    </section>
+    <section id="statisticsContainer" class="statistics-container hidden">
+      
+    </section>
+  </main>
   <script src="script.js" defer></script>
 </body>
 </html>
-
