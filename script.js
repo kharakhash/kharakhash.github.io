@@ -12,8 +12,8 @@ const DEBOUNCE_TIME = 310;
 const MAX_HISTORY_SIZE = 30;
 const SWIPE_THRESHOLD = 30;
 const RANDOM_CELL_PROBABILITY = {
-  SMALL_GRID: 0.05,
-  LARGE_GRID: 0.1
+  SMALL_GRID: 0.01,
+  LARGE_GRID: 0.05
 };
 
 // Performance optimization constants
@@ -31,9 +31,9 @@ const INITIAL_TILES = {
 
 // Random tile values by grid size
 const RANDOM_TILE_VALUES = {
-  4: () => Math.random() < 0.5 ? 32 : 64,
-  5: () => Math.random() < 0.6 ? 128 : 256,
-  7: () => Math.random() < 0.5 ? 2048 : 1024,
+  4: () => Math.random() < 0.8 ? 32 : 64,
+  5: () => Math.random() < 0.8 ? 64 : 128,
+  7: () => Math.random() < 0.8 ? 1024 : 512,
   9: () => 2048,
   11: () => 2048
 };
@@ -67,8 +67,6 @@ const ANIMATION_CLASSES = {
  * @property {boolean} isProcessing - Processing move flag
  * @property {boolean} isOverlayActive - Overlay active flag
  * @property {number} lastMoveTime - Last move timestamp
- * @property {Array<Array<number|null>>} tutorialGrid - Tutorial grid state
- * @property {number} tutorialSize - Tutorial grid size
  */
 
 /**
@@ -92,8 +90,6 @@ const BulbGame = (() => {
     isProcessing: false,
     isOverlayActive: false,
     lastMoveTime: 0,
-    tutorialGrid: [],
-    tutorialSize: 4,
     touchStartX: null,
     touchStartY: null,
     theme: 'dark',
@@ -173,7 +169,7 @@ const BulbGame = (() => {
      */
     isOverlayVisible() {
       return elements.settingsContainer?.style.display === 'flex' ||
-             elements.tutorialContainer?.style.display === 'flex';
+             elements.statisticsContainer?.style.display === 'flex';
     }
   };
 
@@ -546,7 +542,10 @@ const BulbGame = (() => {
      * @private
      */
     _spawnRandomTile() {
-      const position = GridService.getRandomEmptyCell();
+      const emptyCells = GridService.getAllEmptyCells();
+      if (emptyCells.length < state.size) return;
+
+      const position = emptyCells[Math.floor(Math.random() * emptyCells.length)];
       if (!position) return;
       
       const [row, col] = position;
@@ -581,7 +580,7 @@ const BulbGame = (() => {
           AnimationService.animateCellAppearing(cellElement);
             setTimeout(() => {
               PerformanceUtils.batchUpdate(() => UIService.render());
-            }, ANIMATION_DURATION * 6);
+            }, ANIMATION_DURATION * 2);
         }
       } catch (error) {
         ErrorHandler.handle(error, 'GameLogic.addRandomCell');
@@ -974,83 +973,6 @@ const BulbGame = (() => {
     }
   };
 
-  // === Tutorial Service ===
-  const TutorialService = {
-    /**
-     * Resets tutorial grid to initial state
-     */
-    resetTutorialGrid() {
-      if (elements.tutorialSlider) {
-        elements.tutorialSlider.value = '1';
-      }
-      
-      const tutorialGridDiv = document.getElementById('tutorialGrid');
-      if (!tutorialGridDiv) return;
-      
-      tutorialGridDiv.innerHTML = '';
-      
-      // Generate DOM cells for tutorial
-      for (let i = 0; i < state.tutorialSize * state.tutorialSize; i++) {
-        const cell = document.createElement('div');
-        cell.className = 'cell1';
-        tutorialGridDiv.appendChild(cell);
-      }
-      
-      this.setTutorialGridByStep(1);
-    },
-
-    /**
-     * Sets tutorial grid state by step number
-     * @param {number} step - Tutorial step (1-4)
-     */
-    setTutorialGridByStep(step) {
-      state.tutorialGrid = GridService.createEmptyGrid(state.tutorialSize);
-      
-      switch (step) {
-        case 1:
-          state.tutorialGrid[0][1] = 2;
-          state.tutorialGrid[2][0] = 1;
-          break;
-        case 2:
-          state.tutorialGrid[0][1] = 1;
-          state.tutorialGrid[0][3] = 1;
-          state.tutorialGrid[2][0] = 0;
-          state.tutorialGrid[2][3] = 0;
-          break;
-        case 3:
-          state.tutorialGrid[0][1] = 1;
-          state.tutorialGrid[0][3] = 1;
-          break;
-        case 4:
-          state.tutorialGrid[0][1] = 0;
-          state.tutorialGrid[0][3] = 0;
-          state.tutorialGrid[3][1] = 0;
-          state.tutorialGrid[3][3] = 0;
-          break;
-      }
-      
-      this.renderTutorialGrid();
-    },
-
-    /**
-     * Renders tutorial grid state to DOM
-     */
-    renderTutorialGrid() {
-      for (let r = 0; r < state.tutorialSize; r++) {
-        for (let c = 0; c < state.tutorialSize; c++) {
-          const cellIndex = r * state.tutorialSize + c + 1;
-          const cell = document.querySelector(`#tutorialGrid .cell1:nth-child(${cellIndex})`);
-          const val = state.tutorialGrid[r][c];
-          
-          if (cell) {
-            cell.dataset.value = val != null ? val : '';
-            cell.textContent = val != null ? val : '';
-          }
-        }
-      }
-    }
-  };
-
   // === Game Setup ===
   const GameSetup = {
     /**
@@ -1068,9 +990,8 @@ const BulbGame = (() => {
      */
     cacheElements() {
       const elementIds = [
-        'gameContainer', 'settingsContainer', 'tutorialContainer', 'score',
-        'restartBtn', 'undoBtn', 'tutorialOkBtn', 'tutorialNextBtn',
-        'tutorialSlider', 'toggleDataValue', 'themeToggleBtn', 'saveSettingsBtn'
+        'gameContainer', 'settingsContainer', 'statisticsContainer', 'score',
+        'restartBtn', 'undoBtn', 'toggleDataValue', 'themeToggleBtn', 'saveSettingsBtn'
       ];
       
       elementIds.forEach(id => {
@@ -1091,8 +1012,7 @@ const BulbGame = (() => {
       const buttonEvents = [
         ['restartBtn', () => GameLogic.restart()],
         ['undoBtn', this.handleUndoClick.bind(this)],
-        ['tutorialOkBtn', () => UIService.hideTutorial()],
-        ['tutorialNextBtn', this.handleTutorialNext.bind(this)],
+        ['statisticsOkBtn', () => UIService.Statistics()],
         ['saveSettingsBtn', this.handleSaveSettings.bind(this)]
       ];
       
@@ -1300,18 +1220,6 @@ const BulbGame = (() => {
       StorageService.saveState();
       UIService.hideSettings();
     },
-
-    /**
-     * Handles tutorial next button click
-     */
-    handleTutorialNext() {
-      if (elements.tutorialSlider && 
-          elements.tutorialSlider.value < elements.tutorialSlider.max) {
-        const nextValue = Number(elements.tutorialSlider.value) + 1;
-        elements.tutorialSlider.value = String(nextValue);
-        TutorialService.setTutorialGridByStep(nextValue);
-      }
-    }
   };
 
   // === Public API ===
