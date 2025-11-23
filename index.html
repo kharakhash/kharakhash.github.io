@@ -47,7 +47,23 @@
       </div>
     </section>
     <section id="statisticsContainer" class="statistics-container hidden">
-      
+      <div class="statistics-content">
+        <h2>Statistics</h2>
+        <div class="stats-summary">
+          <div>moves record: <span id="recordMoves">0</span></div>
+          <div>score record: <span id="recordScore">0</span></div>
+          <div>total moves: <span id="totalMoves">0</span></div>
+          <div>total score: <span id="totalScore">0</span></div>
+        </div>
+        <h3>games</h3>
+        <ul id="gamesList" class="games-list">
+          <!-- Games will be listed here -->
+        </ul>
+        <button id="clearStatisticsBtn" class="clear-button">Clear Statistics</button>
+      </div>
+      <div id="buttonsContainer" class="fl-x-row-cow-container">
+        <button id="backFromStatisticsBtn">back</button>
+      </div>
     </section>
   </main>
   <script src="script.js" defer></script>
