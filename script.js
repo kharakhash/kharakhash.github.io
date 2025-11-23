@@ -248,15 +248,53 @@ const BulbGame = (() => {
 
         // Load value display setting
         const showValues = localStorage.getItem('showValues');
-        state.showValues = showValues !== 'false';
-        if (elements.toggleDataValue) {
-          elements.toggleDataValue.checked = state.showValues;
+          state.showValues = showValues !== 'false';
+          if (elements.toggleDataValue) {
+            elements.toggleDataValue.checked = state.showValues;
+          }
+        } catch (error) {
+          ErrorHandler.handle(error, 'StorageService.loadState');
         }
-      } catch (error) {
-        ErrorHandler.handle(error, 'StorageService.loadState');
+      },
+
+      /**
+       * Saves a completed game's statistics to localStorage.
+       * @param {Object} gameStats - Object containing game statistics (date, size, moves, score).
+       */
+      saveGameStats(gameStats) {
+        try {
+          const allGames = JSON.parse(localStorage.getItem('allGames')) || [];
+          allGames.push(gameStats);
+          localStorage.setItem('allGames', JSON.stringify(allGames));
+        } catch (error) {
+          ErrorHandler.handle(error, 'StorageService.saveGameStats');
+        }
+      },
+
+      /**
+       * Loads all saved game statistics from localStorage.
+       * @returns {Array<Object>} An array of game statistics.
+       */
+      loadAllGamesStats() {
+        try {
+          return JSON.parse(localStorage.getItem('allGames')) || [];
+        } catch (error) {
+          ErrorHandler.handle(error, 'StorageService.loadAllGamesStats');
+          return [];
+        }
+      },
+
+      /**
+       * Clears all saved game statistics from localStorage.
+       */
+      clearAllGamesStats() {
+        try {
+          localStorage.removeItem('allGames');
+        } catch (error) {
+          ErrorHandler.handle(error, 'StorageService.clearAllGamesStats');
+        }
       }
-    }
-  };
+    };
 
   // === Grid Service ===
   const GridService = {
@@ -613,6 +651,7 @@ const BulbGame = (() => {
      */
     restart() {
       try {
+        this._saveCurrentGameStats(); // Save current game before restarting
         Object.assign(state, {
           moves: 0,
           score: 0,
@@ -624,6 +663,22 @@ const BulbGame = (() => {
         GameSetup.createGrid();
       } catch (error) {
         ErrorHandler.handle(error, 'GameLogic.restart');
+      }
+    },
+    /**
+     * Saves current game stats to localStorage.
+     * Should be called when a game ends (e.g., on restart or size change).
+     */
+    _saveCurrentGameStats() {
+      if (state.moves > 0) { // Only save if a game was actually played
+        const gameStats = {
+          date: new Date().toLocaleDateString(),
+          time: new Date().toLocaleTimeString(),
+          size: state.size,
+          moves: state.moves,
+          score: state.score
+        };
+        StorageService.saveGameStats(gameStats);
       }
     }
   };
@@ -957,6 +1012,30 @@ const BulbGame = (() => {
     },
 
     /**
+     * Shows statistics overlay and renders statistics.
+     */
+    showStatistics() {
+      if (elements.gameContainer && elements.statisticsContainer) {
+        elements.gameContainer.classList.add('hidden');
+        elements.settingsContainer.classList.add('hidden'); // Ensure settings are hidden
+        elements.statisticsContainer.classList.remove('hidden');
+        StatisticsService.renderStatistics();
+        state.isOverlayActive = true;
+      }
+    },
+
+    /**
+     * Hides statistics overlay.
+     */
+    hideStatistics() {
+      if (elements.statisticsContainer && elements.gameContainer) {
+        elements.statisticsContainer.classList.add('hidden');
+        elements.gameContainer.classList.remove('hidden');
+        state.isOverlayActive = false;
+      }
+    },
+
+    /**
      * Highlights currently selected grid size
      */
     highlightCurrentSize() {
@@ -970,6 +1049,76 @@ const BulbGame = (() => {
           square.classList.remove('selected');
         }
       });
+    }
+  };
+
+  // === Statistics Service ===
+  const StatisticsService = {
+    /**
+     * Calculates and renders all statistics to the DOM.
+     */
+    renderStatistics() {
+      const allGames = StorageService.loadAllGamesStats();
+      this._updateSummaryStats(allGames);
+      this._renderGamesList(allGames);
+    },
+
+    /**
+     * Updates summary statistics (records, totals) in the DOM.
+     * @param {Array<Object>} allGames - Array of all game statistics.
+     * @private
+     */
+    _updateSummaryStats(allGames) {
+      let recordMoves = 0;
+      let recordScore = 0;
+      let totalMoves = 0;
+      let totalScore = 0;
+
+      allGames.forEach(game => {
+        recordMoves = Math.max(recordMoves, game.moves);
+        recordScore = Math.max(recordScore, game.score);
+        totalMoves += game.moves;
+        totalScore += game.score;
+      });
+
+      if (elements.recordMoves) elements.recordMoves.textContent = recordMoves;
+      if (elements.recordScore) elements.recordScore.textContent = recordScore;
+      if (elements.totalMoves) elements.totalMoves.textContent = totalMoves;
+      if (elements.totalScore) elements.totalScore.textContent = totalScore;
+    },
+
+    /**
+     * Renders the list of all games to the DOM.
+     * @param {Array<Object>} allGames - Array of all game statistics.
+     * @private
+     */
+    _renderGamesList(allGames) {
+      if (!elements.gamesList) return;
+
+      elements.gamesList.innerHTML = ''; // Clear previous list
+
+      if (allGames.length === 0) {
+        elements.gamesList.innerHTML = '<li>no data yet...</li>';
+        return;
+      }
+      allGames.sort((a, b) => new Date(`${b.date} ${b.time}`) - new Date(`${a.date} ${a.time}`)); // Sort by date/time
+      
+      allGames.forEach(game => {
+        const listItem = document.createElement('li');
+        listItem.textContent = 
+          `${game.date} ${game.time} / ${game.size}x${game.size} / Moves: ${game.moves} / Score: ${game.score}`;
+        elements.gamesList.appendChild(listItem);
+      });
+    },
+
+    /**
+     * Handles clearing all statistics.
+     */
+    clearStatistics() {
+      if (confirm('Вы уверены, что хотите удалить всю статистику?')) {
+        StorageService.clearAllGamesStats();
+        this.renderStatistics(); // Re-render to show empty state
+      }
     }
   };
 
@@ -991,7 +1140,9 @@ const BulbGame = (() => {
     cacheElements() {
       const elementIds = [
         'gameContainer', 'settingsContainer', 'statisticsContainer', 'score',
-        'restartBtn', 'undoBtn', 'toggleDataValue', 'themeToggleBtn', 'saveSettingsBtn'
+        'restartBtn', 'undoBtn', 'toggleDataValue', 'themeToggleBtn', 'saveSettingsBtn',
+        'statisticsBtn', 'backFromStatisticsBtn', 'recordMoves', 'recordScore', 
+        'totalMoves', 'totalScore', 'gamesList', 'clearStatisticsBtn'
       ];
       
       elementIds.forEach(id => {
@@ -1012,8 +1163,10 @@ const BulbGame = (() => {
       const buttonEvents = [
         ['restartBtn', () => GameLogic.restart()],
         ['undoBtn', this.handleUndoClick.bind(this)],
-        ['statisticsOkBtn', () => UIService.Statistics()],
-        ['saveSettingsBtn', this.handleSaveSettings.bind(this)]
+        ['saveSettingsBtn', this.handleSaveSettings.bind(this)],
+        ['statisticsBtn', () => UIService.showStatistics()],
+        ['backFromStatisticsBtn', () => UIService.hideStatistics()],
+        ['clearStatisticsBtn', () => StatisticsService.clearStatistics()]
       ];
       
       buttonEvents.forEach(([id, handler]) => {
@@ -1213,6 +1366,7 @@ const BulbGame = (() => {
      */
     handleSaveSettings() {
       if (state.size !== state.selectedSize) {
+        GameLogic._saveCurrentGameStats(); // Save current game before changing size
         state.size = state.selectedSize;
         this.createGrid();
       }
