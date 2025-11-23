@@ -1107,7 +1107,7 @@ const BulbGame = (() => {
       allGames.forEach(game => {
         const listItem = document.createElement('li');
         listItem.textContent = 
-          `${game.date} ${game.time} / ${game.size}x${game.size} / Ходы: ${game.moves} / Очки: ${game.score}`;
+          `${game.date} ${game.time} / ${game.size}x${game.size} / Moves: ${game.moves} / Score: ${game.score}`;
         elements.gamesList.appendChild(listItem);
       });
     },
