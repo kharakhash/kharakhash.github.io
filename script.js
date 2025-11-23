@@ -1335,19 +1335,29 @@ const BulbGame = (() => {
       const deltaX = touch.clientX - state.touchStartX;
       const deltaY = touch.clientY - state.touchStartY;
       
+      let direction = null;
+
       // Determine swipe direction based on larger delta
       if (Math.abs(deltaX) > Math.abs(deltaY)) {
         if (deltaX > SWIPE_THRESHOLD) {
-          GameLogic.move('ArrowRight');
+          direction = 'ArrowRight';
         } else if (deltaX < -SWIPE_THRESHOLD) {
-          GameLogic.move('ArrowLeft');
+          direction = 'ArrowLeft';
         }
       } else {
         if (deltaY > SWIPE_THRESHOLD) {
-          GameLogic.move('ArrowDown');
+          direction = 'ArrowDown';
         } else if (deltaY < -SWIPE_THRESHOLD) {
-          GameLogic.move('ArrowUp');
+          direction = 'ArrowUp';
         }
+      }
+      
+      if (direction) {
+        GameLogic.move(direction);
+        setTimeout(() => {
+          GameLogic.addRandomCell();
+          PerformanceUtils.batchUpdate(() => UIService.render());
+        }, ANIMATION_DURATION * 3);
       }
       
       // Reset touch tracking
