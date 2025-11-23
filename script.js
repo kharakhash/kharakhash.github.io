@@ -1101,7 +1101,6 @@ const BulbGame = (() => {
         elements.gamesList.innerHTML = '<li>no data yet...</li>';
         return;
       }
-
       allGames.sort((a, b) => new Date(`${b.date} ${b.time}`) - new Date(`${a.date} ${a.time}`)); // Sort by date/time
       
       allGames.forEach(game => {
