@@ -651,6 +651,7 @@ const BulbGame = (() => {
      */
     restart() {
       try {
+        this._saveCurrentGameStats(); // Save current game before restarting
         Object.assign(state, {
           moves: 0,
           score: 0,
@@ -659,13 +660,11 @@ const BulbGame = (() => {
           isProcessing: false
         });
         
-        this._saveCurrentGameStats(); // Save current game before restarting
         GameSetup.createGrid();
       } catch (error) {
         ErrorHandler.handle(error, 'GameLogic.restart');
       }
     },
-
     /**
      * Saves current game stats to localStorage.
      * Should be called when a game ends (e.g., on restart or size change).
