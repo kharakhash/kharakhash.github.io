@@ -93,7 +93,9 @@ const BulbGame = (() => {
     touchStartX: null,
     touchStartY: null,
     theme: 'dark',
-    showValues: true
+    showValues: true,
+    gameMode: 'infinity', // 'infinity' or 'quest'
+    initialGrid: [] // for quest mode 'try again'
   };
 
   // === DOM Elements (Cached) ===
@@ -169,7 +171,8 @@ const BulbGame = (() => {
      */
     isOverlayVisible() {
       return elements.settingsContainer?.style.display === 'flex' ||
-             elements.statisticsContainer?.style.display === 'flex';
+             elements.statisticsContainer?.style.display === 'flex' ||
+             elements.gameOverPopup?.style.display === 'flex'; // Added for game over popup
     }
   };
 
@@ -214,11 +217,12 @@ const BulbGame = (() => {
         const stateToSave = {
           size: state.size,
           theme: state.theme,
-          showValues: state.showValues
+          showValues: state.showValues,
+          gameMode: state.gameMode // Save game mode
         };
 
         Object.entries(stateToSave).forEach(([key, value]) => {
-          localStorage.setItem(key === 'size' ? 'SIZE' : key, 
+          localStorage.setItem(key === 'size' ? 'SIZE' : key,
                              typeof value === 'boolean' ? String(value) : value);
         });
       } catch (error) {
@@ -252,6 +256,13 @@ const BulbGame = (() => {
           if (elements.toggleDataValue) {
             elements.toggleDataValue.checked = state.showValues;
           }
+
+        // Load game mode
+        const savedGameMode = localStorage.getItem('gameMode');
+        state.gameMode = savedGameMode === 'quest' ? 'quest' : 'infinity';
+        if (elements.gameModeToggleBtn) {
+            elements.gameModeToggleBtn.checked = state.gameMode === 'quest';
+        }
         } catch (error) {
           ErrorHandler.handle(error, 'StorageService.loadState');
         }
@@ -382,6 +393,26 @@ const BulbGame = (() => {
       return state.grid.flat()
         .filter(val => val !== null)
         .reduce((sum, val) => sum + val, 0);
+    },
+
+    /**
+     * Checks if two grids are identical.
+     * @param {Array<Array<number|null>>} grid1 
+     * @param {Array<Array<number|null>>} grid2 
+     * @returns {boolean} True if grids are identical, false otherwise.
+     */
+    areGridsIdentical(grid1, grid2) {
+      if (grid1.length !== grid2.length || grid1[0].length !== grid2[0].length) {
+        return false;
+      }
+      for (let r = 0; r < grid1.length; r++) {
+        for (let c = 0; c < grid1[r].length; c++) {
+          if (grid1[r][c] !== grid2[r][c]) {
+            return false;
+          }
+        }
+      }
+      return true;
     }
   };
 
@@ -399,10 +430,22 @@ const BulbGame = (() => {
 
       try {
         const [deltaRow, deltaCol] = DIRECTION_DELTAS[direction];
+        const initialGridClone = GridService.cloneGrid(state.grid); // Clone grid before move
+        
+        // Add random cell at the start of the move for infinity mode, if not the very first move
+        if (state.gameMode === 'infinity' && state.moves > 0) {
+          this.addRandomCell();
+        }
+
         const result = this._executeMove(deltaRow, deltaCol);
         
         if (result.changed) {
           this._finalizeMoveAndUpdate(result);
+          // _checkGameStatus() is now called from _handleDisappearingCells
+        } else if (!GridService.areGridsIdentical(initialGridClone, state.grid)) {
+            // If grid changed but not due to splitting (e.g., cell moved into empty space)
+            // Still consider it a move
+            // _checkGameStatus() is now called from _handleDisappearingCells
         }
       } catch (error) {
         ErrorHandler.handle(error, 'GameLogic.move');
@@ -542,7 +585,7 @@ const BulbGame = (() => {
       
       // Handle disappearing cells with delay
       this._handleDisappearingCells(disappearingCells);
-      this._spawnRandomTile();
+      // _checkGameStatus() is now called from _handleDisappearingCells
       
       PerformanceUtils.batchUpdate(() => UIService.render());
     },
@@ -571,7 +614,10 @@ const BulbGame = (() => {
           UIService.showScorePopup(scoreGain);
         }
         
-        PerformanceUtils.batchUpdate(() => UIService.render());
+        PerformanceUtils.batchUpdate(() => {
+          UIService.render();
+          this._checkGameStatus(); // Check game status after cells disappear and render
+        });
       }, ANIMATION_DURATION * 2);
     },
 
@@ -580,6 +626,9 @@ const BulbGame = (() => {
      * @private
      */
     _spawnRandomTile() {
+      // This function is only called in infinity mode now
+      if (state.gameMode !== 'infinity') return; 
+
       const emptyCells = GridService.getAllEmptyCells();
       if (emptyCells.length < state.size) return;
 
@@ -601,6 +650,9 @@ const BulbGame = (() => {
      * Adds random cell based on current grid state
      */
     addRandomCell() {
+      // This function is only called in infinity mode now
+      if (state.gameMode !== 'infinity') return;
+
       try {
         const gridSum = GridService.calculateGridSum();
         console.log('Grid Sum:', gridSum);
@@ -641,6 +693,7 @@ const BulbGame = (() => {
         }
         
         PerformanceUtils.batchUpdate(() => UIService.render());
+        UIService.hideGameOverPopup(); // In case undoing from a lose state
       } catch (error) {
         ErrorHandler.handle(error, 'GameLogic.undo');
       }
@@ -660,11 +713,116 @@ const BulbGame = (() => {
           isProcessing: false
         });
         
+        UIService.hideGameOverPopup();
         GameSetup.createGrid();
       } catch (error) {
         ErrorHandler.handle(error, 'GameLogic.restart');
       }
     },
+
+    /**
+     * Restarts game in Quest mode with the same initial grid.
+     */
+    tryAgainQuestMode() {
+      try {
+        if (state.gameMode === 'quest' && state.initialGrid.length > 0) {
+          this._saveCurrentGameStats();
+          Object.assign(state, {
+            moves: 0,
+            score: 0,
+            history: [],
+            disappear: {},
+            isProcessing: false,
+            grid: GridService.cloneGrid(state.initialGrid) // Restore initial grid
+          });
+          UIService.hideGameOverPopup();
+          PerformanceUtils.batchUpdate(() => UIService.render());
+        } else {
+          // Fallback to regular restart if not in quest mode or no initial grid
+          this.restart();
+        }
+      } catch (error) {
+        ErrorHandler.handle(error, 'GameLogic.tryAgainQuestMode');
+      }
+    },
+
+    /**
+     * Restarts game in Quest mode with a newly generated grid.
+     */
+    tryAnotherQuestMode() {
+      try {
+        this.restart(); // This will create a new grid
+      } catch (error) {
+        ErrorHandler.handle(error, 'GameLogic.tryAnotherQuestMode');
+      }
+    },
+
+    /**
+     * Checks game status for Quest mode (win/lose).
+     * @private
+     */
+    _checkGameStatus() {
+      if (state.gameMode !== 'quest') return;
+
+      const emptyCells = GridService.getAllEmptyCells();
+      const hasMoves = this._canMakeMove();
+
+      if (emptyCells.length === state.size * state.size) {
+        // All cells are empty - WIN condition
+        this._handleWin();
+      } else if (emptyCells.length === 0 && !hasMoves) {
+        // No empty cells and no possible moves - LOSE condition
+        this._handleLose();
+      }
+    },
+
+    /**
+     * Checks if any valid move can be made on the current grid.
+     * @private
+     * @returns {boolean} True if a move is possible, false otherwise.
+     */
+    _canMakeMove() {
+      for (let r = 0; r < state.size; r++) {
+        for (let c = 0; c < state.size; c++) {
+          const value = state.grid[r][c];
+          if (!GameValidator.canSplit(value)) continue;
+
+          // Check all 4 directions for possible splits
+          for (const [dr, dc] of Object.values(DIRECTION_DELTAS)) {
+            const nextRow = r + dr;
+            const nextCol = c + dc;
+
+            if (GameValidator.isValidPosition(nextRow, nextCol) && state.grid[nextRow][nextCol] === null) {
+              return true; // Found an empty cell next to a splittable cell
+            }
+          }
+        }
+      }
+      return false; // No possible moves found
+    },
+
+    /**
+     * Handles game win condition in Quest mode.
+     * @private
+     */
+    _handleWin() {
+      console.log('Quest Mode: You Win!');
+      this._saveCurrentGameStats();
+      // Restart game with a new grid on win
+      this.restart(); 
+      // Optionally show a "You Win!" message before restarting
+    },
+
+    /**
+     * Handles game lose condition in Quest mode.
+     * @private
+     */
+    _handleLose() {
+      console.log('Quest Mode: You Lose!');
+      this._saveCurrentGameStats();
+      UIService.showGameOverPopup('You lose in Quest mode.');
+    },
+
     /**
      * Saves current game stats to localStorage.
      * Should be called when a game ends (e.g., on restart or size change).
@@ -676,7 +834,8 @@ const BulbGame = (() => {
           time: new Date().toLocaleTimeString(),
           size: state.size,
           moves: state.moves,
-          score: state.score
+          score: state.score,
+          mode: state.gameMode
         };
         StorageService.saveGameStats(gameStats);
       }
@@ -985,6 +1144,7 @@ const BulbGame = (() => {
       if (elements.settingsContainer && elements.gameContainer) {
         elements.settingsContainer.classList.add('hidden');
         elements.gameContainer.classList.remove('hidden');
+        this.hideGameOverPopup(); // Ensure popup is hidden
       }
     },
 
@@ -1032,6 +1192,30 @@ const BulbGame = (() => {
         elements.statisticsContainer.classList.add('hidden');
         elements.gameContainer.classList.remove('hidden');
         state.isOverlayActive = false;
+        this.hideGameOverPopup(); // Ensure popup is hidden
+      }
+    },
+
+    /**
+     * Hides game over popup
+     */
+    hideGameOverPopup() {
+      if (elements.gameOverPopup) {
+        elements.gameOverPopup.classList.add('hidden');
+      }
+    },
+
+    /**
+     * Shows game over popup
+     * @param {string} message - Message to display
+     */
+    showGameOverPopup(message) {
+      if (elements.gameOverPopup) {
+        const popupMessage = elements.gameOverPopup.querySelector('p');
+        if (popupMessage) {
+          popupMessage.textContent = message;
+        }
+        elements.gameOverPopup.classList.remove('hidden');
       }
     },
 
@@ -1106,7 +1290,7 @@ const BulbGame = (() => {
       allGames.forEach(game => {
         const listItem = document.createElement('li');
         listItem.textContent = 
-          `${game.date} ${game.time} / ${game.size}x${game.size} / Moves: ${game.moves} / Score: ${game.score}`;
+          `${game.date} ${game.time} / ${game.size}x${game.size} / Moves: ${game.moves} / Score: ${game.score} / Mode: ${game.mode}`;
         elements.gamesList.appendChild(listItem);
       });
     },
@@ -1142,7 +1326,8 @@ const BulbGame = (() => {
         'gameContainer', 'settingsContainer', 'statisticsContainer', 'score',
         'restartBtn', 'undoBtn', 'toggleDataValue', 'themeToggleBtn', 'saveSettingsBtn',
         'statisticsBtn', 'backFromStatisticsBtn', 'recordMoves', 'recordScore', 
-        'totalMoves', 'totalScore', 'gamesList', 'clearStatisticsBtn'
+        'totalMoves', 'totalScore', 'gamesList', 'clearStatisticsBtn',
+        'gameOverPopup', 'tryAgainBtn', 'tryAnotherBtn', 'gameModeToggleBtn' // New elements
       ];
       
       elementIds.forEach(id => {
@@ -1166,7 +1351,9 @@ const BulbGame = (() => {
         ['saveSettingsBtn', this.handleSaveSettings.bind(this)],
         ['statisticsBtn', () => UIService.showStatistics()],
         ['backFromStatisticsBtn', () => UIService.hideStatistics()],
-        ['clearStatisticsBtn', () => StatisticsService.clearStatistics()]
+        ['clearStatisticsBtn', () => StatisticsService.clearStatistics()],
+        ['tryAgainBtn', () => GameLogic.tryAgainQuestMode()], // New
+        ['tryAnotherBtn', () => GameLogic.tryAnotherQuestMode()] // New
       ];
       
       buttonEvents.forEach(([id, handler]) => {
@@ -1199,6 +1386,15 @@ const BulbGame = (() => {
           UIService.updateCellValues();
           StorageService.saveState();
         }, 'values.toggle'));
+      }
+
+      // Game mode toggle
+      if (elements.gameModeToggleBtn) {
+        elements.gameModeToggleBtn.addEventListener('change', ErrorHandler.wrap(() => {
+          state.gameMode = elements.gameModeToggleBtn.checked ? 'quest' : 'infinity';
+          StorageService.saveState();
+          // Game will restart with new mode when settings are saved
+        }, 'gameMode.toggle'));
       }
       
       // Size selection
@@ -1263,6 +1459,10 @@ const BulbGame = (() => {
       }
 
       this.placeInitialTiles();
+      // Save initial grid for Quest mode "Try Again" functionality
+      if (state.gameMode === 'quest') {
+        state.initialGrid = GridService.cloneGrid(state.grid);
+      }
       PerformanceUtils.batchUpdate(() => UIService.render());
     },
 
@@ -1303,13 +1503,6 @@ const BulbGame = (() => {
       if (Object.keys(DIRECTION_DELTAS).includes(e.key)) {
         e.preventDefault();
         GameLogic.move(e.key);
-        
-        // Add random cell after move with small delay
-        setTimeout(() => {
-          GameLogic.addRandomCell();
-          PerformanceUtils.batchUpdate(() => UIService.render());
-        }, ANIMATION_DURATION * 3
-);
       }
     },
 
@@ -1354,10 +1547,6 @@ const BulbGame = (() => {
       
       if (direction) {
         GameLogic.move(direction);
-        setTimeout(() => {
-          GameLogic.addRandomCell();
-          PerformanceUtils.batchUpdate(() => UIService.render());
-        }, ANIMATION_DURATION * 3);
       }
       
       // Reset touch tracking
@@ -1375,10 +1564,11 @@ const BulbGame = (() => {
      * Handles save settings button click
      */
     handleSaveSettings() {
-      if (state.size !== state.selectedSize) {
-        GameLogic._saveCurrentGameStats(); // Save current game before changing size
+      if (state.size !== state.selectedSize || state.gameMode !== (elements.gameModeToggleBtn.checked ? 'quest' : 'infinity')) {
+        GameLogic._saveCurrentGameStats(); // Save current game before changing size or mode
         state.size = state.selectedSize;
-        this.createGrid();
+        state.gameMode = elements.gameModeToggleBtn.checked ? 'quest' : 'infinity';
+        this.createGrid(); // Re-create grid with new size/mode
       }
       
       StorageService.saveState();
@@ -1400,3 +1590,4 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('[BulbGame] Failed to initialize:', error);
   }
 });
+
