@@ -40,6 +40,11 @@
           <label for="toggleDataValue" class="slider"></label>
           <span>show values</span>
         </div>
+        <div class="switcher">
+          <input type="checkbox" id="gameModeToggleBtn" checked>
+          <label for="gameModeToggleBtn" class="slider"></label>
+          <span>switch game mode</span>
+        </div>
       </div>
       <div id="buttonsContainer" class="fl-x-row-cow-container">
         <button id="saveSettingsBtn">apply</button>
@@ -63,6 +68,16 @@
       </div>
       <div id="buttonsContainer" class="fl-x-row-cow-container">
         <button id="backFromStatisticsBtn">back</button>
+      </div>
+    </section>
+    <section id="gameOverPopup" class="popup-container hidden">
+      <div class="popup-content">
+        <h2>Game Over!</h2>
+        <p>You lose in Quest mode.</p>
+        <div class="popup-buttons">
+          <button id="tryAgainBtn">Try Again</button>
+          <button id="tryAnotherBtn">Try Another</button>
+        </div>
       </div>
     </section>
   </main>

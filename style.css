@@ -334,6 +334,43 @@ button {
   100% { opacity: 0; transform: translate(-50%, -30px) scale(1);}
 }
 
+/* Стили для всплывающего окна Game Over */
+.popup-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.popup-content {
+  background-color: var(--bg-darkest);
+  padding: 30px;
+  border-radius: 10px;
+  text-align: center;
+  color: var(--text-main);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.popup-content h2 {
+  margin-top: 0;
+  font-size: 2em;
+}
+
+.popup-content p {
+  font-size: 1.2em;
+  margin-bottom: 20px;
+}
+
+.popup-buttons button {
+  margin: 0 10px;
+}
+
 /* Медиа-запросы для адаптивности */
 @media (max-width: 600px) {
   .fl-x-row-cow-container {
