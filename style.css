@@ -334,7 +334,7 @@ button {
   100% { opacity: 0; transform: translate(-50%, -30px) scale(1);}
 }
 
-/* Стили для всплывающего окна Game Over */
+/* Стили для всплывающего окна Game Over и Quest Win и Quest Win */
 .popup-container {
   position: fixed;
   top: 0;
