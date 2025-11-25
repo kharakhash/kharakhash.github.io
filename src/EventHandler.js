@@ -196,7 +196,4 @@ export class EventHandler {
   handleTutorialSliderChange() {
     this.game.handleTutorialSliderChange(this.elements.tutorialSlider.value);
   }
-  handleShowTutorialClick() {
-    UIService.showTutorial();
-  }
-  }
+}

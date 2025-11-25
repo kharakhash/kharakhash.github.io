@@ -12,13 +12,24 @@ import {
 /**
  * GameLogic - Core game rules and mechanics.
  */
-export const GameLogic = ((StateManager, elements) => {
+export const GameLogic = (() => {
+  let _gameInstance = null; // Private variable to store the Game instance
+
+  /**
+   * Sets the Game instance for GameLogic to interact with.
+   * This should be called once during game initialization.
+   * @param {Object} gameInstance - The Game instance.
+   */
+  const setGameContext = (gameInstance) => {
+    _gameInstance = gameInstance;
+  };
+
   /**
    * Validates and executes game move in specified direction.
    * @param {string} direction - Direction key (ArrowUp, ArrowDown, etc.).
    */
   const move = (direction) => {
-    if (!GameValidator.canExecuteMove(elements)) return;
+    if (!_gameInstance || !GameValidator.canExecuteMove(_gameInstance.elements)) return;
     
     StateManager.setState({ lastMoveTime: Date.now(), isProcessing: true });
 
@@ -116,7 +127,7 @@ export const GameLogic = ((StateManager, elements) => {
 
     if (GameValidator.isValidPosition(targetRow, targetCol)) {
       newGrid[targetRow][targetCol] = splitValue;
-      AnimationService.animateSplitAppear(row, col, targetRow, targetCol, splitValue, deltaRow, deltaCol, elements);
+      AnimationService.animateSplitAppear(row, col, targetRow, targetCol, splitValue, deltaRow, deltaCol, _gameInstance.elements);
       
       if (splitValue === 2) {
         disappearingCells.push([row, col], [targetRow, targetCol]);
@@ -306,7 +317,7 @@ export const GameLogic = ((StateManager, elements) => {
       isProcessing: false,
       grid: GridService.createEmptyGrid(prevState.size), // Create empty grid
     }));
-    GameSetup.placeInitialTiles(); // Place initial tiles
+    _gameInstance.placeInitialTiles(); // Place initial tiles using Game instance
     UIService.hideGameOverPopup();
     UIService.hideQuestWinPopup();
   };
@@ -349,7 +360,7 @@ export const GameLogic = ((StateManager, elements) => {
       history: [], // Clear history for new level
       grid: GridService.createEmptyGrid(prevState.size), // Create empty grid
     }));
-    GameSetup.placeInitialTiles(); // Place new initial tiles
+    _gameInstance.placeInitialTiles(); // Place new initial tiles using Game instance
   };
 
   /**
@@ -459,7 +470,8 @@ export const GameLogic = ((StateManager, elements) => {
     tryAgainQuestMode,
     tryAnotherQuestMode,
     startNextQuestLevel,
+    setGameContext, // Export the setter for the Game instance
     _checkGameStatus, // Export for initial setup
     _saveCurrentGameStats, // Export for game setup
   };
-})(StateManager, {}); // Pass an empty object for elements initially, as UIService needs it too. We'll update elements later.
+})(); // Removed IIFE parameters

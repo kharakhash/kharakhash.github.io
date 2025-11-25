@@ -1,4 +1,5 @@
 import { StateManager } from './StateManager.js';
+import { DEBOUNCE_TIME } from './constants.js'; // Импортируем DEBOUNCE_TIME
 
 /**
  * GameValidator - Provides validation logic for game rules and state.
@@ -28,7 +29,7 @@ export const GameValidator = (() => {
 
   /**
    * Validates game state for move execution.
-   * @param {Object} elements - Cached DOM elements.
+   * @param {Object} elements - Cached DOM elements (передается из GameLogic).
    * @returns {boolean} Can execute move.
    */
   const canExecuteMove = (elements) => {
@@ -42,7 +43,7 @@ export const GameValidator = (() => {
 
   /**
    * Checks if any overlay is currently visible.
-   * @param {Object} elements - Cached DOM elements.
+   * @param {Object} elements - Cached DOM elements (передается из GameLogic).
    * @returns {boolean} Overlay visible.
    */
   const isOverlayVisible = (elements) => {
