@@ -53,7 +53,6 @@ export const UIService = (() => {
     applyTheme(state.theme);
     renderGrid(state);
     updateScoreAndMoves(state);
-    updateEfficiency(state);
     updateSettingsUI(state);
     // Any other UI updates that depend on state
   };
@@ -104,26 +103,6 @@ export const UIService = (() => {
       if (_elements.levelScore) _elements.levelScore.textContent = levelScore;
       if (_elements.totalScoreDisplay) _elements.totalScoreDisplay.textContent = totalScore;
     }
-  };
-
-  /**
-   * Updates efficiency display with animation.
-   * @param {Object} state - The current game state.
-   */
-  const updateEfficiency = (state) => {
-    const { moves, score } = state;
-    setTimeout(() => {
-      const efficiency = moves > 0 ? (score / moves).toFixed(1) : '0.0';
-      const effElement = document.getElementById('efficiency'); // Assuming 'efficiency' element exists
-      
-      if (effElement && effElement.textContent !== efficiency) {
-        effElement.textContent = efficiency;
-        effElement.classList.remove('flash');
-        // Trigger reflow to restart animation
-        void effElement.offsetWidth;
-        effElement.classList.add('flash');
-      }
-    }, ANIMATION_DURATION * 2); // Reduced delay
   };
 
   /**
