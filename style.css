@@ -59,7 +59,7 @@
 
 /* Тёмная тема */
 
-/* .cell[data-value="2"]: Ячейка с числом 2. 
+/* .cell[data-value="2"]: Ячейка с числом 2.
    Фон — var(--cell-2), текст — само значение (2) */
 
 /* Для всех .cell: текстовое содержимое = data-value (см. JS, например: cell.textContent = val ?? '') */
@@ -98,6 +98,21 @@ body {
   font-size: clamp(16px, 2.5vmin, 18px); /* Адаптивный размер шрифта */
 }
 
+/* Стили для нового отображения questScoreDisplay */
+#questScoreDisplay {
+  display: flex;
+  flex-direction: row; /* Располагаем колонки в ряд */
+  justify-content: space-evenly; /* Распределяем пространство */
+  width: 100%; /* Занимаем всю доступную ширину */
+  gap: 20px; /* Отступ между колонками */
+}
+
+.quest-column {
+  display: flex;
+  flex-direction: column; /* Элементы внутри колонки располагаем в столбец */
+  align-items: flex-start; /* Выравнивание текста по левому краю */
+}
+
   #checkboxContainer input[type="checkbox"] {
     cursor: pointer;
   }
@@ -119,21 +134,21 @@ body {
     font-size: clamp(16px, 2.5vmin, 20px); /* Адаптивный размер шрифта для ячеек */
   }
 
-    
+
   .cell {
     transition: all 0.3s;
     background: var(--bg-darker);
     border-radius: 5px 5px 5px 5px;
     font-family: Arial, Helvetica, sans-serif;
     display: flex;
-    align-items: center; 
+    align-items: center;
     justify-content: center;
     font-size: 1em;
     font-weight: 500;
     box-shadow: inset 2px 2px 0px 0px var(--bg-darky), inset -2px -2px 0px 0px var(--bg-dark);/* тёмная тень справа и снизу */
     transition: transform 0.3s ease-out, opacity 0.1s ease-out 0.3s; background: 0.5s;
   }
-  
+
   .cell.split-appear-anim {
   pointer-events: none;
   scale: 1;
@@ -232,7 +247,7 @@ button {
 }
 
 .size-square.selected {
-  border: 3px solid var(--text-main);  
+  border: 3px solid var(--text-main);
   background: var(--bg-darkest);
 }
 

@@ -20,10 +20,14 @@
           <span>score: <span id="score">0</span></span>
         </div>
         <div id="questScoreDisplay" class="score-display hidden">
-          <span>level moves: <span id="levelMoves">0</span></span>
-          <span>total moves: <span id="totalMovesDisplay">0</span></span>
-          <span>level score: <span id="levelScore">0</span></span>
-          <span>total score: <span id="totalScoreDisplay">0</span></span>
+          <div class="quest-column">
+            <span>level moves: <span id="levelMoves">0</span></span>
+            <span>total moves: <span id="totalMovesDisplay">0</span></span>
+          </div>
+          <div class="quest-column">
+            <span>level score: <span id="levelScore">0</span></span>
+            <span>total score: <span id="totalScoreDisplay">0</span></span>
+          </div>
         </div>
       </div>
       <div id="game"></div>
@@ -75,10 +79,6 @@
         <button id="clearStatisticsBtn" class="clear-button">clear statistics</button>
       </div>
       <div id="buttonsContainer" class="fl-x-row-cow-container">
-        <button id="backFromStatisticsBtn">back</button>
-      </div>
-    </section>
-    <section id="gameOverPopup" class="popup-container hidden">
       <div class="popup-content">
         <h2>game over!</h2>
         <p>you lose</p>
