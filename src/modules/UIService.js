@@ -281,27 +281,6 @@ export const UIService = (() => {
     }
   };
 
-  /**
-   * Hides quest lose popup.
-   */
-  const hideQuestLosePopup = () => {
-    toggleSectionVisibility(_elements.questLosePopup, false);
-  };
-
-  /**
-   * Shows quest lose popup.
-   * @param {string} message - Message to display.
-   */
-  const showQuestLosePopup = (message) => {
-    if (_elements.questLosePopup) {
-      const popupMessage = _elements.questLosePopup.querySelector('p');
-      if (popupMessage) {
-        popupMessage.textContent = message;
-      }
-      toggleSectionVisibility(_elements.questLosePopup, true);
-    }
-  };
-
   // Subscribe to state changes for automatic re-rendering
   StateManager.subscribe(PerformanceUtils.debounce(render, ANIMATION_DURATION)); // Debounce render calls
 
@@ -320,8 +299,6 @@ export const UIService = (() => {
     showGameOverPopup,
     hideQuestWinPopup,
     showQuestWinPopup,
-    hideQuestLosePopup, // Export the new function
-    showQuestLosePopup, // Export the new function
     highlightCurrentSize, // Exported for settings interaction
     updateSettingsUI, // Exported for settings update
   };
