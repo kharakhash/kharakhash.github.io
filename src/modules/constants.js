@@ -15,7 +15,7 @@ export const DOM_CACHE_REFRESH_INTERVAL = 1000;
 
 // Initial tile values by grid size
 export const INITIAL_TILES = {
-  4: [2048, 64, 64, 32, 16, 8],
+  4: [128, 64, 32, 16, 8],
   5: [256, 128, 64, 32, 8],
   7: [2048, 1024, 512, 128, 64, 32, 32],
   9: [2048, 1024, 1024, 512, 512, 256, 128],
