@@ -22,7 +22,7 @@ const DOM_CACHE_REFRESH_INTERVAL = 1000;
 
 // Initial tile values by grid size
 const INITIAL_TILES = {
-  4: [64, 32, 16, 8],
+  4: [128, 64, 32, 32, 16, 8],
   5: [256, 128, 64, 32, 8],
   7: [2048, 1024, 512, 128, 64, 32, 32],
   9: [2048, 1024, 1024, 512, 512, 256, 128],
@@ -84,8 +84,12 @@ const BulbGame = (() => {
     selectedSize: DEFAULT_SIZE,
     grid: [],
     history: [],
-    score: 0,
-    moves: 0,
+    score: 0, // Score for infinity mode
+    moves: 0, // Moves for infinity mode
+    levelMoves: 0, // Moves for current quest level
+    totalMoves: 0, // Total moves in quest series
+    levelScore: 0, // Score for current quest level
+    totalScore: 0, // Total score in quest series (win streak)
     disappear: {},
     isProcessing: false,
     isOverlayActive: false,
@@ -686,10 +690,15 @@ const BulbGame = (() => {
       try {
         const lastState = state.history.shift();
         state.grid = GridService.cloneGrid(lastState.grid);
-        state.score = lastState.score;
-        
-        if (state.moves > 0) {
-          state.moves--;
+
+        if (state.gameMode === 'infinity') {
+          state.score = lastState.score;
+          if (state.moves > 0) state.moves--;
+        } else { // quest mode
+          state.levelScore = lastState.levelScore;
+          state.totalScore = lastState.totalScore;
+          if (state.levelMoves > 0) state.levelMoves--;
+          if (state.totalMoves > 0) state.totalMoves--;
         }
         
         PerformanceUtils.batchUpdate(() => UIService.render());
@@ -708,6 +717,10 @@ const BulbGame = (() => {
         Object.assign(state, {
           moves: 0,
           score: 0,
+          levelMoves: 0,
+          totalMoves: 0,
+          levelScore: 0,
+          totalScore: 0,
           history: [],
           disappear: {},
           isProcessing: false
@@ -728,13 +741,14 @@ const BulbGame = (() => {
         if (state.gameMode === 'quest' && state.initialGrid.length > 0) {
           this._saveCurrentGameStats();
           Object.assign(state, {
-            moves: 0,
-            score: 0,
+            levelMoves: 0,
+            levelScore: 0,
             history: [],
             disappear: {},
             isProcessing: false,
             grid: GridService.cloneGrid(state.initialGrid) // Restore initial grid
           });
+          // totalMoves и totalScore не сбрасываются здесь
           UIService.hideGameOverPopup();
           PerformanceUtils.batchUpdate(() => UIService.render());
         } else {
@@ -751,9 +765,26 @@ const BulbGame = (() => {
      */
     tryAnotherQuestMode() {
       try {
-        this.restart(); // This will create a new grid
+        this.restart(); // This will create a new grid, resetting all quest counters
       } catch (error) {
         ErrorHandler.handle(error, 'GameLogic.tryAnotherQuestMode');
+      }
+    },
+
+    /**
+     * Starts the next quest level, generating a new grid but keeping current moves and score.
+     */
+    startNextQuestLevel() {
+      try {
+        UIService.hideQuestWinPopup(); // Hide the win popup
+        // Сбрасываем только счетчики уровня
+        state.levelMoves = 0;
+        state.levelScore = 0;
+        state.history = []; // Очищаем историю для нового уровня
+        GameSetup.createGrid(); // Create a new grid
+        PerformanceUtils.batchUpdate(() => UIService.render());
+      } catch (error) {
+        ErrorHandler.handle(error, 'GameLogic.startNextQuestLevel');
       }
     },
 
@@ -808,9 +839,8 @@ const BulbGame = (() => {
     _handleWin() {
       console.log('Quest Mode: You Win!');
       this._saveCurrentGameStats();
-      // Restart game with a new grid on win
-      this.restart(); 
-      // Optionally show a "You Win!" message before restarting
+      UIService.showQuestWinPopup(state.levelMoves, state.levelScore); // Показываем levelMoves и levelScore
+      // totalMoves и totalScore сохраняются
     },
 
     /**
@@ -820,7 +850,10 @@ const BulbGame = (() => {
     _handleLose() {
       console.log('Quest Mode: You Lose!');
       this._saveCurrentGameStats();
-      UIService.showGameOverPopup('You lose in Quest mode.');
+      UIService.showGameOverPopup('you lose, try again?', state.levelMoves, state.levelScore); // Показываем levelMoves и levelScore
+      // При проигрыше сбрасываем totalMoves и totalScore
+      state.totalMoves = 0;
+      state.totalScore = 0;
     },
 
     /**
@@ -828,13 +861,25 @@ const BulbGame = (() => {
      * Should be called when a game ends (e.g., on restart or size change).
      */
     _saveCurrentGameStats() {
-      if (state.moves > 0) { // Only save if a game was actually played
+      if (state.gameMode === 'infinity' && state.moves > 0) {
         const gameStats = {
           date: new Date().toLocaleDateString(),
           time: new Date().toLocaleTimeString(),
           size: state.size,
           moves: state.moves,
           score: state.score,
+          mode: state.gameMode
+        };
+        StorageService.saveGameStats(gameStats);
+      } else if (state.gameMode === 'quest' && state.levelMoves > 0) { // Для quest mode сохраняем level stats
+        const gameStats = {
+          date: new Date().toLocaleDateString(),
+          time: new Date().toLocaleTimeString(),
+          size: state.size,
+          moves: state.levelMoves, // Сохраняем level moves
+          score: state.levelScore, // Сохраняем level score
+          totalMoves: state.totalMoves, // Добавляем total moves
+          totalScore: state.totalScore, // Добавляем total score
           mode: state.gameMode
         };
         StorageService.saveGameStats(gameStats);
@@ -1050,13 +1095,18 @@ const BulbGame = (() => {
      * Updates score and moves display
      */
     updateScoreAndMoves() {
-      if (elements.scoreDisplay) {
-        elements.scoreDisplay.textContent = state.score;
-      }
-      
-      const movesElement = document.getElementById('moves');
-      if (movesElement) {
-        movesElement.textContent = state.moves;
+      if (state.gameMode === 'infinity') {
+        elements.infinityScoreDisplay?.classList.remove('hidden');
+        elements.questScoreDisplay?.classList.add('hidden');
+        if (elements.moves) elements.moves.textContent = state.moves;
+        if (elements.score) elements.score.textContent = state.score;
+      } else { // quest mode
+        elements.infinityScoreDisplay?.classList.add('hidden');
+        elements.questScoreDisplay?.classList.remove('hidden');
+        if (elements.levelMoves) elements.levelMoves.textContent = state.levelMoves;
+        if (elements.totalMovesDisplay) elements.totalMovesDisplay.textContent = state.totalMoves;
+        if (elements.levelScore) elements.levelScore.textContent = state.levelScore;
+        if (elements.totalScoreDisplay) elements.totalScoreDisplay.textContent = state.totalScore;
       }
     },
 
@@ -1220,6 +1270,28 @@ const BulbGame = (() => {
     },
 
     /**
+     * Hides quest win popup
+     */
+    hideQuestWinPopup() {
+      if (elements.questWinPopup) {
+        elements.questWinPopup.classList.add('hidden');
+      }
+    },
+
+    /**
+     * Shows quest win popup
+     * @param {number} moves - Moves made in the quest level
+     * @param {number} score - Score obtained in the quest level
+     */
+    showQuestWinPopup(moves, score) {
+      if (elements.questWinPopup) {
+        if (elements.winMoves) elements.winMoves.textContent = moves;
+        if (elements.winScore) elements.winScore.textContent = score;
+        elements.questWinPopup.classList.remove('hidden');
+      }
+    },
+
+    /**
      * Highlights currently selected grid size
      */
     highlightCurrentSize() {
@@ -1323,15 +1395,18 @@ const BulbGame = (() => {
      */
     cacheElements() {
       const elementIds = [
-        'gameContainer', 'settingsContainer', 'statisticsContainer', 'score',
+        'gameContainer', 'settingsContainer', 'statisticsContainer', 'score', 'moves',
         'restartBtn', 'undoBtn', 'toggleDataValue', 'themeToggleBtn', 'saveSettingsBtn',
-        'statisticsBtn', 'backFromStatisticsBtn', 'recordMoves', 'recordScore', 
+        'statisticsBtn', 'backFromStatisticsBtn', 'recordMoves', 'recordScore',
         'totalMoves', 'totalScore', 'gamesList', 'clearStatisticsBtn',
-        'gameOverPopup', 'tryAgainBtn', 'tryAnotherBtn', 'gameModeToggleBtn' // New elements
+        'gameOverPopup', 'tryAgainBtn', 'tryAnotherBtn', 'gameModeToggleBtn',
+        'questWinPopup', 'winMoves', 'winScore', 'nextQuestLevelBtn',
+        'infinityScoreDisplay', 'questScoreDisplay', // Новые контейнеры
+        'levelMoves', 'totalMovesDisplay', 'levelScore', 'totalScoreDisplay' // Новые счетчики для quest mode
       ];
       
       elementIds.forEach(id => {
-        elements[id === 'score' ? 'scoreDisplay' : id] = document.getElementById(id);
+        elements[id] = document.getElementById(id);
       });
     },
 
@@ -1352,8 +1427,9 @@ const BulbGame = (() => {
         ['statisticsBtn', () => UIService.showStatistics()],
         ['backFromStatisticsBtn', () => UIService.hideStatistics()],
         ['clearStatisticsBtn', () => StatisticsService.clearStatistics()],
-        ['tryAgainBtn', () => GameLogic.tryAgainQuestMode()], // New
-        ['tryAnotherBtn', () => GameLogic.tryAnotherQuestMode()] // New
+        ['tryAgainBtn', () => GameLogic.tryAgainQuestMode()],
+        ['tryAnotherBtn', () => GameLogic.tryAnotherQuestMode()],
+        ['nextQuestLevelBtn', () => GameLogic.startNextQuestLevel()] // New
       ];
       
       buttonEvents.forEach(([id, handler]) => {
@@ -1431,11 +1507,10 @@ const BulbGame = (() => {
      * Creates and initializes game grid
      */
     createGrid() {
-      // Reset game state
+      // Reset only grid, history, disappear, and processing state
       Object.assign(state, {
         grid: GridService.createEmptyGrid(state.size),
         history: [],
-        score: 0,
         disappear: {},
         isProcessing: false
       });
@@ -1590,4 +1665,5 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('[BulbGame] Failed to initialize:', error);
   }
 });
+
 
