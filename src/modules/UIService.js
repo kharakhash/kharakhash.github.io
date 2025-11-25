@@ -302,6 +302,15 @@ export const UIService = (() => {
     }
   };
 
+  /**
+   * Hides quest lose popup
+   *
+   */
+
+  /**
+   * Shows quest lose popup 
+   */
+
   // Subscribe to state changes for automatic re-rendering
   StateManager.subscribe(PerformanceUtils.debounce(render, ANIMATION_DURATION)); // Debounce render calls
 
