@@ -32,7 +32,7 @@ export const AnimationService = (() => {
     if (!animationClass) return;
     
     cell.classList.add(animationClass);
-    setTimeout(() => cell.classList.remove(animationClass), ANIMATION_DURATION);
+    setTimeout(() => cell.classList.remove(animationClass), ANIMATION_DURATION); // Slightly longer to ensure completion
   };
 
   /**
@@ -70,7 +70,7 @@ export const AnimationService = (() => {
     // Clean up after animation
     setTimeout(() => {
       _cleanupSplitAnimation(tempCell, targetCell, targetRow, targetCol, value, deltaRow, deltaCol, showValues);
-    }, ANIMATION_DURATION);
+    }, ANIMATION_DURATION + 50); // Extra 50ms to ensure animation completion
   };
 
   /**
