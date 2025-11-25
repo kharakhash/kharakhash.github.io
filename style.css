@@ -28,41 +28,6 @@
 #game {
   background-color: var(--bg-darkest);
 }
-.cell[data-value="1"],
-.cell[data-value="2"],
-.cell[data-value="4"],
-.cell[data-value="8"],
-.cell[data-value="16"],
-.cell[data-value="32"],
-.cell[data-value="64"],
-.cell[data-value="128"],
-.cell[data-value="256"],
-.cell[data-value="512"],
-.cell[data-value="1024"],
-.cell[data-value="2048"],
-.cell[data-value="4096"] {
-  background: var(--cell-1); /* Default to cell-1, specific values overridden below */
-}
-.cell[data-value="2"] { background: var(--cell-2); }
-.cell[data-value="4"] { background: var(--cell-4); }
-.cell[data-value="8"] { background: var(--cell-8); }
-.cell[data-value="16"] { background: var(--cell-16); }
-.cell[data-value="32"] { background: var(--cell-32); }
-.cell[data-value="64"] { background: var(--cell-64); }
-.cell[data-value="128"] { background: var(--cell-128); }
-.cell[data-value="256"] { background: var(--cell-256); }
-.cell[data-value="512"] { background: var(--cell-512); }
-.cell[data-value="1024"] { background: var(--cell-1024); }
-.cell[data-value="2048"] { background: var(--cell-2048); }
-.cell[data-value="4096"] { background: var(--cell-4096); }
-
-
-/* Тёмная тема */
-
-/* .cell[data-value="2"]: Ячейка с числом 2. 
-   Фон — var(--cell-2), текст — само значение (2) */
-
-/* Для всех .cell: текстовое содержимое = data-value (см. JS, например: cell.textContent = val ?? '') */
 
 body {
   margin: 0;
