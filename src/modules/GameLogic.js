@@ -4,6 +4,7 @@ import { GridService } from './GridService.js';
 import { ErrorHandler } from './ErrorHandling.js';
 import { AnimationService } from './AnimationService.js';
 import { UIService } from './UIService.js';
+import { StorageService } from './StorageService.js'; // Добавляем импорт StorageService
 import { 
   DIRECTION_DELTAS, INITIAL_TILES, MAX_HISTORY_SIZE, 
   RANDOM_CELL_PROBABILITY, RANDOM_TILE_VALUES, ANIMATION_DURATION 

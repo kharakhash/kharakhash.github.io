@@ -307,6 +307,7 @@ export const UIService = (() => {
 
   return {
     setElements, // Export the setter for elements
+    render, // Export render method
     renderGrid, // Exported for initial grid creation
     showScorePopup,
     showSettings,
