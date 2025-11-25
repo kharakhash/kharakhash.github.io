@@ -216,27 +216,6 @@ export const UIService = (() => {
   };
 
   /**
-   * Shows tutorial overlay.
-   */
-  const showTutorial = () => {
-    StateManager.setState({ isOverlayActive: true });
-    toggleSectionVisibility(_elements.gameContainer, false);
-    toggleSectionVisibility(_elements.settingsContainer, false);
-    // Assuming elements.tutorialContainer exists in index.html
-    toggleSectionVisibility(_elements.tutorialContainer, true);
-    // TutorialService.resetTutorialGrid() will be called by EventHandler
-  };
-
-  /**
-   * Hides tutorial overlay.
-   */
-  const hideTutorial = () => {
-    StateManager.setState({ isOverlayActive: false });
-    toggleSectionVisibility(_elements.tutorialContainer, false);
-    toggleSectionVisibility(_elements.gameContainer, true);
-  };
-
-  /**
    * Hides game over popup.
    */
   const hideGameOverPopup = () => {
@@ -293,8 +272,6 @@ export const UIService = (() => {
     hideSettings,
     showStatistics,
     hideStatistics,
-    showTutorial,
-    hideTutorial,
     hideGameOverPopup,
     showGameOverPopup,
     hideQuestWinPopup,

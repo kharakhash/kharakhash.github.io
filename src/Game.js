@@ -242,11 +242,4 @@ export class Game {
     UIService.highlightCurrentSize(newSize);
   }
 
-  handleShowTutorial() {
-    UIService.showTutorial();
-  }
-
-  handleTutorialSliderChange(value) {
-    // TutorialService.setTutorialGridByStep(Number(value)); // Assuming TutorialService exists
-  }
 }

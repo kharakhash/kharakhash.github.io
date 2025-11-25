@@ -81,7 +81,7 @@ export const StatisticsService = (() => {
    * Handles clearing all statistics.
    */
   const clearStatistics = () => {
-    if (confirm('Вы уверены, что хотите удалить всю статистику?')) {
+    if (confirm('shure?')) {
       StorageService.clearAllGamesStats();
       renderStatistics(); // Re-render to show empty state
     }
