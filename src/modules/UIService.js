@@ -303,15 +303,78 @@ export const UIService = (() => {
   };
 
   /**
-   * Hides quest lose popup
-   *
+   * Hides quest lose popup.
    */
+  const hideQuestLosePopup = () => {
+    toggleSectionVisibility(_elements.questLosePopup, false);
+  };
 
   /**
-   * Shows quest lose popup 
+   * Shows quest lose popup.
+   * @param {string} message - Message to display.
    */
+  const showQuestLosePopup = (message) => {
+    if (_elements.questLosePopup) {
+      const popupMessage = _elements.questLosePopup.querySelector('p');
+      if (popupMessage) {
+  return {
+    setElements, // Export the setter for elements
+    render, // Exportsrender method
+    renderGrid, // Exported for initial grid creation
+    showScorePopup,
+    showSettings,
+    hideSettings,ho
+    showStatistics,
+    hideStatistics,
+    showTutorial,
+    hideTutorial,
+    hideGameOverPopup,
+    showGameOverPopup,
+    hideQuestWinPopup,
+    showQuestWinPopup,
+    hideQuestLosePopup, // Export the new function
+    showQuestLosePopup, // Export the new function
+    highlightCurrentSize, // Exported for settings interaction
+    updateSettingsUI, // Exported for settings update
+  };l,
+    hideGameOverPopup,
+    showGameOverPopup,
+    hideQuestWinPopup,
+    showQuestWinPopup,
+    hideQuestLosePopup, // Export the new function
+    showQuestLosePopup, // Export the new function
+    highightCurrentSize, // Exported for settings interaction
+    updateSettingsUI // Exported for settings update
+  };
+})();
+    shotGameOverPopup,
+    hideggllSecScotVisibility(_elements.questLoseionVis true);ibility(_elements.questLosePopup, true);
+    s}owQuestWnPopup,
+    hideQuestLosePopup, // Export the new function
+    showQuestLosePopup, // Export the new function
+    hi
+  };
+  Subscribe to state c}anges for automatc re-renderin
+  StateManager.subscribe(PerformanceUtils.debounce(render, ANIMATION_DURATION)); // Debounce render calls
 
-  // Subscribe to state changes for automatic re-rendering
+  return {
+    setElements, // Export te setter for eemens
+    render, // Expot der mehod
+    renderGrdor initial grid creation
+    showScePopup,
+   howS,
+   hideSettgs,
+    showStatisics,
+    hidStatistics,
+    showTutoil,
+    hideTuorial,
+    hdeGameOverPopup,
+    showGameOverPpup,
+    hideQuestWiPopup,
+  };showQuestWinPop,
+    hieQuestLosePopup, // Export the new funcion
+    showQustLosPopup, // Export he new funco
+    highlihtCurrentSizeintercionSubscribe to state changes for automatic re-rendering
   StateManager.subscribe(PerformanceUtils.debounce(render, ANIMATION_DURATION)); // Debounce render calls
 
   return {
@@ -329,6 +392,8 @@ export const UIService = (() => {
     showGameOverPopup,
     hideQuestWinPopup,
     showQuestWinPopup,
+    hideQuestLosePopup, // Export the new function
+    showQuestLosePopup, // Export the new function
     highlightCurrentSize, // Exported for settings interaction
     updateSettingsUI, // Exported for settings update
   };
