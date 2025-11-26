@@ -1,6 +1,6 @@
 // === Constants ===
 export const ANIMATION_DURATION = 250;
-export const DEFAULT_SIZE = 9;
+export const DEFAULT_SIZE = 5;
 export const DEBOUNCE_TIME = 310;
 export const MAX_HISTORY_SIZE = 30;
 export const SWIPE_THRESHOLD = 30;
