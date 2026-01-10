@@ -4,11 +4,10 @@ import { GridService } from './GridService.js';
 import { ErrorHandler } from './ErrorHandling.js';
 import { AnimationService } from './AnimationService.js';
 import { UIService } from './UIService.js';
-import { StorageService } from './StorageService.js'; // Добавляем импорт StorageService
-import { 
-  DIRECTION_DELTAS, INITIAL_TILES, MAX_HISTORY_SIZE, 
-  RANDOM_CELL_PROBABILITY, RANDOM_TILE_VALUES, ANIMATION_DURATION 
-} from './constants.js';
+import { GameCore } from '../core/GameCore.js';
+import { getModeRules, saveCurrentGameStats } from './ModeRules.js';
+import { SnapshotService } from './SnapshotService.js';
+import { MAX_HISTORY_SIZE, ANIMATION_DURATION } from './constants.js';
 
 /**
  * GameLogic - Core game rules and mechanics.
@@ -36,241 +35,99 @@ export const GameLogic = (() => {
 
     try {
       const state = StateManager.getState();
-      const [deltaRow, deltaCol] = DIRECTION_DELTAS[direction];
-      const initialGridClone = GridService.cloneGrid(state.grid); // Clone grid before move
-      
-      // Add random cell at the start of the move for infinity mode, if not the very first move
-      if (state.gameMode === 'infinity' && state.moves > 0) {
-        addRandomCell();
+      const result = GameCore.computeMove(state, direction);
+      if (!result.changed) {
+        return;
       }
 
-      const result = _executeMove(state, deltaRow, deltaCol);
-      
-      if (result.changed) {
-        _finalizeMoveAndUpdate(state, result);
-      } else if (!GridService.areGridsIdentical(initialGridClone, StateManager.getState().grid)) {
-          // If grid changed but not due to splitting (e.g., cell moved into empty space)
-          // Still consider it a move
+      const historyEntry = SnapshotService.makeSnapshot(state);
+      const newHistory = [historyEntry, ...state.history];
+      if (newHistory.length > MAX_HISTORY_SIZE) {
+        newHistory.pop();
       }
+
+      StateManager.setState((prevState) => {
+        const modeRules = getModeRules(state.gameMode);
+        const moveCounters = modeRules.applyMoveCounters(prevState, state);
+        return {
+          ...result.patch,
+          ...moveCounters,
+          history: newHistory,
+        };
+      });
+
+      _animateSplitActions(result.effects.splitActions);
+      _animateRandomCell(result.effects.spawnedCell);
+      _handleDisappearingCells(result.effects.disappearingCells);
     } catch (error) {
       ErrorHandler.handle(error, 'GameLogic.move');
     } finally {
       StateManager.setState({ isProcessing: false });
     }
   };
-
-  /**
-   * Executes the core move logic.
-   * @private
-   * @param {Object} state - Current game state.
-   * @param {number} deltaRow - Row movement delta.
-   * @param {number} deltaCol - Column movement delta.
-   * @returns {Object} Move execution result.
-   */
-  const _executeMove = (state, deltaRow, deltaCol) => {
-    const newGrid = GridService.createEmptyGrid(state.size);
-    const processOrder = _getProcessingOrder(state, deltaRow, deltaCol);
-    
-    let changed = false;
-    const disappearingCells = [];
-
-    // Process each cell in calculated order
-    for (const [row, col] of processOrder) {
-      const cellValue = state.grid[row][col];
-      if (!GameValidator.canSplit(cellValue)) continue;
-
-      const moveResult = _processCellMove(
-        state, row, col, cellValue, deltaRow, deltaCol, newGrid, disappearingCells
-      );
-      changed = changed || moveResult;
-    }
-
-    return { newGrid, changed, disappearingCells };
-  };
-
-  /**
-   * Processes individual cell movement.
-   * @private
-   * @param {Object} state - Current game state.
-   * @param {number} row - Cell row.
-   * @param {number} col - Cell column.
-   * @param {number} value - Cell value.
-   * @param {number} deltaRow - Row delta.
-   * @param {number} deltaCol - Column delta.
-   * @param {Array} newGrid - Target grid.
-   * @param {Array} disappearingCells - Cells to disappear.
-   * @returns {boolean} Whether cell was moved/changed.
-   */
-  const _processCellMove = (state, row, col, value, deltaRow, deltaCol, newGrid, disappearingCells) => {
-    const [nextRow, nextCol] = [row + deltaRow, col + deltaCol];
-    
-    if (GameValidator.isValidPosition(nextRow, nextCol) && 
-        state.grid[nextRow][nextCol] === null) {
-      return _applySplit(state, row, col, value, deltaRow, deltaCol, newGrid, disappearingCells);
-    } else {
-      const [targetRow, targetCol] = GridService.findNewPosition(row, col, deltaRow, deltaCol);
-      newGrid[targetRow][targetCol] = value;
-      return targetRow !== row || targetCol !== col;
-    }
-  };
-
-  /**
-   * Applies cell splitting logic.
-   * @private
-   */
-  const _applySplit = (state, row, col, value, deltaRow, deltaCol, newGrid, disappearingCells) => {
-    const splitValue = value / 2;
-    const [targetRow, targetCol] = GridService.findNewPosition(
-      row + deltaRow, col + deltaCol, deltaRow, deltaCol
-    );
-    
-    newGrid[row][col] = splitValue;
-
-    if (GameValidator.isValidPosition(targetRow, targetCol)) {
-      newGrid[targetRow][targetCol] = splitValue;
-      AnimationService.animateSplitAppear(row, col, targetRow, targetCol, splitValue, deltaRow, deltaCol, _gameInstance.elements);
-      
-      if (splitValue === 2) {
-        disappearingCells.push([row, col], [targetRow, targetCol]);
-      }
-    } else if (splitValue === 2) {
-      disappearingCells.push([row, col]);
-    }
-
-    AnimationService.animateCellSplit(row, col, deltaRow, deltaCol);
-    return true;
-  };
-
-  /**
-   * Gets processing order based on movement direction.
-   * @private
-   * @param {Object} state - Current game state.
-   * @param {number} deltaRow - Row delta.
-   * @param {number} deltaCol - Column delta.
-   * @returns {Array<[number, number]>} Processing order array.
-   */
-  const _getProcessingOrder = (state, deltaRow, deltaCol) => {
-    const order = [];
-    for (let r = 0; r < state.size; r++) {
-      for (let c = 0; c < state.size; c++) {
-        order.push([r, c]);
-      }
-    }
-    
-    // Reverse order if moving in positive direction
-    const newOrder = [];
-    const rows = Array.from({ length: state.size }, (_, i) => deltaRow > 0 ? state.size - 1 - i : i);
-    const cols = Array.from({ length: state.size }, (_, i) => deltaCol > 0 ? state.size - 1 - i : i);
-
-    for (const r of rows) {
-      for (const c of cols) {
-        newOrder.push([r, c]);
-      }
-    }
-    return newOrder;
-  };
-
-  /**
-   * Finalizes move and updates game state.
-   * @private
-   * @param {Object} oldState - State before move.
-   * @param {Object} result - Move execution result.
-   */
-  const _finalizeMoveAndUpdate = (oldState, result) => {
-    const { newGrid, disappearingCells } = result;
-    
-    // Save history for undo functionality
-    const newHistory = [{ 
-      grid: GridService.cloneGrid(oldState.grid), 
-      score: oldState.score,
-      levelMoves: oldState.levelMoves,
-      totalMoves: oldState.totalMoves,
-      levelScore: oldState.levelScore,
-      totalScore: oldState.totalScore,
-    }, ...oldState.history];
-    
-    if (newHistory.length > MAX_HISTORY_SIZE) {
-      newHistory.pop();
-    }
-
-    StateManager.setState((prevState) => ({
-      grid: newGrid,
-      moves: prevState.moves + (oldState.gameMode === 'infinity' ? 1 : 0),
-      levelMoves: prevState.levelMoves + (oldState.gameMode === 'quest' ? 1 : 0),
-      totalMoves: prevState.totalMoves + (oldState.gameMode === 'quest' ? 1 : 0),
-      history: newHistory,
-    }));
-    
-    _handleDisappearingCells(newGrid, disappearingCells);
-  };
-
-  /**
-   * Handles cells that should disappear after move.
-   * @private
-   * @param {Array<Array<number|null>>} currentGrid - The current grid state after move.
-   * @param {Array<[number, number]>} disappearingCells - Cells to remove.
-   */
-  const _handleDisappearingCells = (currentGrid, disappearingCells) => {
-    if (disappearingCells.length === 0) {
+  const _handleDisappearingCells = (disappearingCells) => {
+    if (!disappearingCells || disappearingCells.length === 0) {
       _checkGameStatus(StateManager.getState());
       return;
     }
     
     setTimeout(() => {
+      const state = StateManager.getState();
+      const updatedGrid = GridService.cloneGrid(state.grid);
       let scoreGain = 0;
-      const updatedGrid = GridService.cloneGrid(currentGrid);
       
-      disappearingCells.forEach(([row, col]) => {
-        if (updatedGrid[row][col] === 2) { // Only remove if value is 2
-          AnimationService.animateAndRemoveCell(row, col);
+      disappearingCells.forEach(({ row, col }) => {
+        if (updatedGrid[row][col] === 2) {
+          AnimationService.animateAndRemoveCell(row, col, _gameInstance?.elements);
           updatedGrid[row][col] = null;
           scoreGain += 1;
         }
       });
       
-      if (scoreGain > 0) {
-        StateManager.setState((prevState) => ({
+      StateManager.setState((prevState) => {
+        const modeRules = getModeRules(prevState.gameMode);
+        const scorePatch = modeRules.applyScore(prevState, scoreGain);
+        return {
           grid: updatedGrid,
-          score: prevState.score + (prevState.gameMode === 'infinity' ? scoreGain : 0),
-          levelScore: prevState.levelScore + (prevState.gameMode === 'quest' ? scoreGain : 0),
-          totalScore: prevState.totalScore + (prevState.gameMode === 'quest' ? scoreGain : 0),
-        }));
+          ...scorePatch,
+        };
+      });
+
+      if (scoreGain > 0) {
         UIService.showScorePopup(scoreGain);
-      } else {
-        StateManager.setState({ grid: updatedGrid });
       }
+
       _checkGameStatus(StateManager.getState());
     }, ANIMATION_DURATION * 2);
   };
 
-  /**
-   * Adds random cell based on current grid state.
-   */
-  const addRandomCell = () => {
-    const state = StateManager.getState();
-    if (state.gameMode !== 'infinity') return;
+  const _animateSplitActions = (splitActions) => {
+    if (!splitActions || splitActions.length === 0 || !_gameInstance) return;
+    const elements = _gameInstance.elements;
+    splitActions.forEach((action) => {
+      const targetRow = action.to ? action.to.row : action.from.row;
+      const targetCol = action.to ? action.to.col : action.from.col;
+      AnimationService.animateSplitAppear(
+        action.from.row,
+        action.from.col,
+        targetRow,
+        targetCol,
+        action.value,
+        action.deltaRow,
+        action.deltaCol,
+        elements
+      );
+      AnimationService.animateCellSplit(action.from.row, action.from.col, action.deltaRow, action.deltaCol, elements);
+    });
+  };
 
-    try {
-      const gridSum = GridService.calculateGridSum();
-      const threshold = state.size * 25; // This threshold might need tuning
-      const emptyCells = GridService.getAllEmptyCells();
-
-      if (gridSum <= threshold && emptyCells.length > state.size / 2) { // Adjust condition for better balance
-        const randomCellPos = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-        const getRandomValue = RANDOM_TILE_VALUES[state.size];
-        const newValue = getRandomValue ? getRandomValue() : 16;
-
-        StateManager.setState((prevState) => {
-          const newGrid = GridService.cloneGrid(prevState.grid);
-          newGrid[randomCellPos[0]][randomCellPos[1]] = newValue;
-          return { grid: newGrid };
-        });
-        
-        const cellElement = document.getElementById(`cell-${randomCellPos[0]}-${randomCellPos[1]}`);
-        AnimationService.animateCellAppearing(cellElement);
-      }
-    } catch (error) {
-      ErrorHandler.handle(error, 'GameLogic.addRandomCell');
+  const _animateRandomCell = (spawnedCell) => {
+    if (!spawnedCell) return;
+    const { row, col } = spawnedCell.position;
+    const cellElement = _gameInstance?.elements?.cells?.[row]?.[col]
+      || document.getElementById(`cell-${row}-${col}`);
+    if (cellElement) {
+      AnimationService.animateCellAppearing(cellElement);
     }
   };
 
@@ -282,16 +139,11 @@ export const GameLogic = (() => {
     if (state.history.length === 0) return;
     
     try {
-      const lastState = state.history[0]; // Get the first item, not pop
+      const [lastSnapshot] = state.history;
+      const restored = SnapshotService.restoreSnapshot(lastSnapshot);
       StateManager.setState((prevState) => ({
-        grid: GridService.cloneGrid(lastState.grid),
-        score: lastState.score,
-        moves: lastState.moves,
-        levelMoves: lastState.levelMoves,
-        totalMoves: lastState.totalMoves,
-        levelScore: lastState.levelScore,
-        totalScore: lastState.totalScore,
-        history: prevState.history.slice(1), // Remove the first item
+        ...restored,
+        history: prevState.history.slice(1),
       }));
       UIService.hideGameOverPopup(); // In case undoing from a lose state
     } catch (error) {
@@ -337,6 +189,7 @@ export const GameLogic = (() => {
         isProcessing: false,
         grid: GridService.cloneGrid(prevState.initialGrid), // Restore initial grid
       }));
+      UIService.hideQuestFailPopup();
       UIService.hideGameOverPopup();
     } else {
       restart(); // Fallback to regular restart if not in quest mode or no initial grid
@@ -348,6 +201,7 @@ export const GameLogic = (() => {
    */
   const tryAnotherQuestMode = () => {
     restart(); // This will create a new grid, resetting all quest counters
+    UIService.hideQuestFailPopup();
   };
 
   /**
@@ -365,107 +219,32 @@ export const GameLogic = (() => {
   };
 
   /**
-   * Checks game status for Quest mode (win/lose).
+   * Checks win/lose conditions and delegates mode-specific reactions.
    * @private
-   * @param {Object} state - Current game state.
+   * @param {Object} state - Current flattened game state.
    */
   const _checkGameStatus = (state) => {
-    if (state.gameMode !== 'quest') return;
+    const modeRules = getModeRules(state.gameMode);
 
-    const emptyCells = GridService.getAllEmptyCells();
-    const hasMoves = _canMakeMove(state);
-
-    if (emptyCells.length === state.size * state.size) { // All cells are empty - WIN condition
-      _handleWin(state);
-    } else if (emptyCells.length === 0 && !hasMoves) { // No empty cells and no possible moves - LOSE condition
-      _handleLose(state);
-    }
-  };
-
-  /**
-   * Checks if any valid move can be made on the current grid.
-   * @private
-   * @param {Object} state - Current game state.
-   * @returns {boolean} True if a move is possible, false otherwise.
-   */
-  const _canMakeMove = (state) => {
-    for (let r = 0; r < state.size; r++) {
-      for (let c = 0; c < state.size; c++) {
-        const value = state.grid[r][c];
-        if (!GameValidator.canSplit(value)) continue;
-
-        // Check all 4 directions for possible splits
-        for (const [dr, dc] of Object.values(DIRECTION_DELTAS)) {
-          const nextRow = r + dr;
-          const nextCol = c + dc;
-
-          if (GameValidator.isValidPosition(nextRow, nextCol) && state.grid[nextRow][nextCol] === null) {
-            return true; // Found an empty cell next to a splittable cell
-          }
-        }
+    if (state.gameMode === 'quest') {
+      const outcome = GameCore.checkQuestOutcome(state);
+      if (outcome === 'win') {
+        modeRules.onWin(state);
+      } else if (outcome === 'lose') {
+        modeRules.onLose(state);
       }
+      return;
     }
-    return false; // No possible moves found
-  };
 
-  /**
-   * Handles game win condition in Quest mode.
-   * @private
-   * @param {Object} state - Current game state.
-   */
-  const _handleWin = (state) => {
-    console.log('Quest Mode: You Win!');
-    _saveCurrentGameStats(state);
-    UIService.showQuestWinPopup(state.levelMoves, state.levelScore);
-  };
-
-  /**
-   * Handles game lose condition in Quest mode.
-   * @private
-   * @param {Object} state - Current game state.
-   */
-  const _handleLose = (state) => {
-    console.log('Quest Mode: You Lose!');
-    _saveCurrentGameStats(state);
-    UIService.showGameOverPopup('you lose, try again?', state.levelMoves, state.levelScore);
-    // При проигрыше сбрасываем totalMoves и totalScore
-    StateManager.setState({ totalMoves: 0, totalScore: 0 });
-  };
-
-  /**
-   * Saves current game stats to localStorage.
-   * Should be called when a game ends (e.g., on restart or size change).
-   * @param {Object} state - Current game state.
-   */
-  const _saveCurrentGameStats = (state) => {
-    if (state.gameMode === 'infinity' && state.moves > 0) {
-      const gameStats = {
-        date: new Date().toLocaleDateString(),
-        time: new Date().toLocaleTimeString(),
-        size: state.size,
-        moves: state.moves,
-        score: state.score,
-        mode: state.gameMode
-      };
-      StorageService.saveGameStats(gameStats);
-    } else if (state.gameMode === 'quest' && state.levelMoves > 0) { // Для quest mode сохраняем level stats
-      const gameStats = {
-        date: new Date().toLocaleDateString(),
-        time: new Date().toLocaleTimeString(),
-        size: state.size,
-        moves: state.levelMoves,
-        score: state.levelScore,
-        totalMoves: state.totalMoves,
-        totalScore: state.totalScore,
-        mode: state.gameMode
-      };
-      StorageService.saveGameStats(gameStats);
+    if (state.gameMode === 'infinity' && !GameCore.canMakeMove(state)) {
+      modeRules.onLose(state);
     }
   };
+
+  const _saveCurrentGameStats = (state) => saveCurrentGameStats(state);
 
   return {
     move,
-    addRandomCell,
     undo,
     restart,
     tryAgainQuestMode,

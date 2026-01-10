@@ -1,24 +1,24 @@
 /* Style.css - Structured Styles */
 
-/* Theme Variables */
+/* Theme Variables (ff8800 for specific tiles)*/
 :root {
   --bg-darky: #adadad;
   --bg-dark: #707070;
   --bg-darker: #404040;
   --bg-darkest: #272727;
   --text-main: #ffffff;
-  --text-sec: #151515;
-  --cell-1: #454545;
+  --text-sec: #b2b2b2;
+  --cell-1: #505050;
   --cell-2: #FF4487;
   --cell-4: #ff7614;
-  --cell-8: #0ce0a4;
-  --cell-16: #09cdd0;
-  --cell-32: #25ACF2;
-  --cell-64: #166FFA;
+  --cell-8: #b8c902;
+  --cell-16: #32cb21;
+  --cell-32: #34abf5;
+  --cell-64: #246aff;
   --cell-128: #7a2bfa;
   --cell-256: #7700b7;
-  --cell-512: #a400b3;
-  --cell-1024: #7e0246;
+  --cell-512: #9c00aa;
+  --cell-1024: #7e025d;
   --cell-2048: #410032;
   --cell-4096: #270023;
   --cell-null: var(--bg-darker);
@@ -43,6 +43,7 @@
 .cell[data-value="4096"] {
   background: var(--cell-1); /* Default to cell-1, specific values overridden below */
 }
+.cell[data-value="1"] { background: var(--cell-1); }
 .cell[data-value="2"] { background: var(--cell-2); }
 .cell[data-value="4"] { background: var(--cell-4); }
 .cell[data-value="8"] { background: var(--cell-8); }
@@ -65,13 +66,17 @@
 /* Для всех .cell: текстовое содержимое = data-value (см. JS, например: cell.textContent = val ?? '') */
 
 body {
-  margin: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   background: var(--bg-darkest);
   color: var(--text-main);
   font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-main);
+  font-weight: 400;
   min-height: 100dvh; /* Изменено с height на min-height для лучшей адаптивности */
 }
 
@@ -80,37 +85,89 @@ body {
 .game-container {
   display: flex;
   flex-direction: column;
-  justify-content: space-around;
+  flex-wrap: nowrap;
   align-items: center;
+  justify-content: space-evenly;
   width: 100%;
+  min-height: 100dvh;
   max-width: 500px; /* Ограничение, чтобы на больших экранах не растягивалось */
+
 }
+
+#settingsContainer {
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-size: clamp(16px, 2.5vmin, 18px); /* Адаптивный размер шрифта */
+  min-height: 100dvh; /* Изменено с height на min-height */
+}
+
+#statisticsContainer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(96%, 400px);
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 1.5rem 1.25rem 0;
+  background: var(--bg-darkest);
+  z-index: 5;
+  overflow: hidden;
+}
+
 
 .fl-x-row-cow-container {
   display: flex;
   flex-direction: row;
-  justify-content: space-evenly;
-  width: 90vmin;
-  padding: 6px 0px;
+  justify-content: space-around;
+  width: 100vmin;
+  padding: 10px 0px;
 }
 
 #scoreContainer {
   font-size: clamp(16px, 2.5vmin, 18px); /* Адаптивный размер шрифта */
 }
 
-/* Стили для нового отображения questScoreDisplay */
-#questScoreDisplay {
+/* Unified card styling for score displays */
+.score-display {
   display: flex;
-  flex-direction: row; /* Располагаем колонки в ряд */
-  justify-content: space-evenly; /* Распределяем пространство */
-  width: 100%; /* Занимаем всю доступную ширину */
-  gap: 20px; /* Отступ между колонками */
+  flex-direction: row;
+  justify-content: space-around;
+  width: 96%;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 0.9rem 0rem;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
+  gap: 1.5rem;
+  margin-bottom: 0.85rem;
 }
 
-.quest-column {
+.score-display > span {
   display: flex;
-  flex-direction: column; /* Элементы внутри колонки располагаем в столбец */
-  align-items: flex-start; /* Выравнивание текста по левому краю */
+  flex-direction: column;
+  gap: 0.65rem;
+  font-size: 0.95rem;
+  align-items: center;
+  text-align: center;
+}
+
+.score-display strong {
+  display: flex;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-sec);
+  font-weight: 600;
+}
+
+.score-display span span {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
 }
 
   #checkboxContainer input[type="checkbox"] {
@@ -143,19 +200,20 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1em;
+    font-size: 1.2em;
     font-weight: 500;
     box-shadow: inset 2px 2px 0px 0px var(--bg-darky), inset -2px -2px 0px 0px var(--bg-dark);/* тёмная тень справа и снизу */
     transition: transform 0.3s ease-out, opacity 0.1s ease-out 0.3s; background: 0.5s;
   }
 
-  .cell.split-appear-anim {
+.cell.split-appear-anim {
   pointer-events: none;
   scale: 1;
   border-radius: 5px;
   text-align: center;
   font-size: 1.2em;
-  transition: left 0.3s, top 0.3s;
+  transition: transform 0.3s;
+  will-change: transform;
 }
 
 .cell-null {
@@ -188,31 +246,36 @@ body.light-theme {
   --text-sec: #ffffff;
   --cell-1: #f4f4f4;
   --cell-2: #FF4487;
-  --cell-4: #e99f00;
-  --cell-8: #4edb1b;
-  --cell-16: #0a971a;
-  --cell-32: #25ACF2;
-  --cell-64: #166FFA;
-  --cell-128: #7a2bfa;
-  --cell-256: #7700b7;
-  --cell-512: #a400b3;
-  --cell-1024: #7e0246;
-  --cell-2048: #410032;
+  --cell-4: #f04000;
+  --cell-8: #ff8800;
+  --cell-16: #b8c902;
+  --cell-32: #32cb21;
+  --cell-64: #34abf5;
+  --cell-128:#246aff;
+  --cell-256: #7a2bfa;
+  --cell-512: #7700b7;
+  --cell-1024: #9c00aa;
+  --cell-2048: #7e025d;
   --cell-4096: #270023;
   --cell-null: var(--bg-darker);
 }
 
 button {
   display: flex;
-    padding: 10px 20px;
-    font-size: clamp(16px, 2.5vmin, 18px); /* Адаптивный размер шрифта */
-    justify-content: center;
-    color: var(--text-main);
-    background: var(--bg-darkest);
-    border-radius: 5px;
-    border-color: var(--bg-darker);
-    cursor: pointer;
-    z-index: 2;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 40px;
+  font-size: clamp(16px, 2.5vmin, 18px); /* Адаптивный размер шрифта */
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-sec);
+  font-weight: 600;
+  background: var(--bg-darkest);
+  border-radius: 5px;
+  border-color: var(--bg-darker);
+  cursor: pointer;
+  z-index: 2;
 }
 
 #settingsBottom {
@@ -230,9 +293,9 @@ button {
 }
 
 .size-square {
-  width: 60px;
-  height: 60px;;
-  background: var(--bg-darkest);
+  width: 80px;
+  height: 80px;
+  background: var(--bg-darker);
   color: var(--text-main);
   display: flex;
   align-items: center;
@@ -248,7 +311,7 @@ button {
 
 .size-square.selected {
   border: 3px solid var(--text-main);
-  background: var(--bg-darkest);
+  background: var(--bg-dark);
 }
 
 .switcher {
@@ -270,7 +333,7 @@ button {
   height: 36px;
   background: var(--bg-darker);
   display: block;
-  border-radius: 50px;
+  border-radius: 5px;
   position: relative;
   cursor: pointer;
   transition: background 0.3s;
@@ -286,7 +349,7 @@ button {
   width: 30px;
   height: 30px;
   background: var(--bg-dark);
-  border-radius: 50%;
+  border-radius: 5px;
   transition: 0.3s;
 }
 
@@ -299,23 +362,155 @@ button {
   background: #ffffff;
 }
 
-#settingsContainer {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  background: var(--bg-main);
-  color: var(--text-main);
-  font-size: clamp(16px, 2.5vmin, 18px); /* Адаптивный размер шрифта */
-  min-height: 100dvh; /* Изменено с height на min-height */
-}
-
 #settingsMedium {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: baseline;
   justify-content: flex-start;
   gap: 10px;
   padding: 20px;
+}
+
+.statistics-content {
+  flex: 1;
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 auto;
+  padding: 0.5rem 0 calc(5rem + env(safe-area-inset-bottom, 0));
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-main);
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.stats-summary {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.stats-summary div {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 52px;
+}
+
+.games-blocks-wrapper {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.games-blocks {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.game-card {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.game-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 90px;
+}
+
+.game-card__tag {
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-main);
+}
+
+.game-card__tag--muted {
+  color: var(--text-sec);
+  font-weight: 500;
+}
+
+.game-card__summary {
+  display: flex;
+  flex-direction: row;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+}
+
+.game-card__stats {
+  display: flex;
+  gap: 1.2rem;
+  align-items: center;
+}
+
+.game-card__stats span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.95rem;
+}
+
+.game-card__stats strong {
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-sec);
+  font-weight: 600;
+}
+
+.game-card__stats span span {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.game-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-sec);
+}
+
+.games-blocks-empty {
+  width: 100%;
+  text-align: center;
+  font-style: italic;
+  color: var(--text-sec);
+  padding: 1rem 0;
+}
+
+#statisticsButtonsContainer {
+  display: flex;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 500px);
+  padding: 0.9rem 1rem calc(env(safe-area-inset-bottom, 0) + 1rem);
+  justify-content: space-evenly;
+  gap: 0.75rem;
+  z-index: 6;
 }
 
 @keyframes disappearing {
@@ -366,13 +561,22 @@ button {
 }
 
 .popup-content h2 {
+  display: flex;
+  flex-direction: column;
   margin-top: 0;
   font-size: 2em;
 }
 
 .popup-content p {
+  display: flex;
+  flex-direction: column;
   font-size: 1.2em;
   margin-bottom: 20px;
+}
+
+.popup-buttons {
+  display: flex;
+  justify-content: center;
 }
 
 .popup-buttons button {
@@ -389,27 +593,25 @@ button {
 @media (max-width: 600px) {
   .fl-x-row-cow-container {
     flex-direction: row; /* Keep as row for small screens, as it's a game interface */
-    gap: 0.5rem;
-    width: 90%; /* Use percentage for better flexibility */
     max-width: 400px; /* Optional: limit width on very small screens */
   }
 
   .size-square {
-    width: 45px;
-    height: 45px;
+    width: 60px;
+    height: 60px;
     font-size: 14px;
   }
 
   #game {
-    width: 95vmin;
-    height: 95vmin;
+    width: 96vmin;
+    height: 96vmin;
   }
 }
 
 @media (min-width: 601px) and (max-width: 1024px) {
   /* Adjust for tablets and smaller desktops */
   .fl-x-row-cow-container {
-    width: 70vmin;
+    width: 75vmin;
   }
 
   #game {
@@ -472,7 +674,7 @@ button {
   }
   70% {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1.1);
   }
   100% {
     opacity: 1;

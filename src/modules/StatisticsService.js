@@ -21,9 +21,9 @@ export const StatisticsService = (() => {
    */
   const renderStatistics = () => {
     try {
-      const allGames = StorageService.loadAllGamesStats();
-      _updateSummaryStats(allGames);
-      _renderGamesList(allGames);
+      const { games } = StorageService.getStatsStore();
+      _updateSummaryStats(games);
+      _renderGamesList(games);
     } catch (error) {
       ErrorHandler.handle(error, 'StatisticsService.renderStatistics');
     }
@@ -61,19 +61,70 @@ export const StatisticsService = (() => {
   const _renderGamesList = (allGames) => {
     if (!_elements.gamesList) return;
 
-    _elements.gamesList.innerHTML = ''; // Clear previous list
+    _elements.gamesList.innerHTML = ''; // Clear previous cards
 
     if (allGames.length === 0) {
-      _elements.gamesList.innerHTML = '<li>no data yet...</li>';
+      const emptyMessage = document.createElement('div');
+      emptyMessage.className = 'games-blocks-empty';
+      emptyMessage.textContent = 'no data yet...';
+      _elements.gamesList.appendChild(emptyMessage);
       return;
     }
-    allGames.sort((a, b) => new Date(`${b.date} ${b.time}`) - new Date(`${a.date} ${a.time}`)); // Sort by date/time
-    
-    allGames.forEach(game => {
-      const listItem = document.createElement('li');
-      listItem.textContent = 
-        `${game.date} ${game.time} / ${game.size}x${game.size} / Moves: ${game.moves} / Score: ${game.score} / Mode: ${game.mode}`;
-      _elements.gamesList.appendChild(listItem);
+
+    const sortedGames = [...allGames].sort(
+      (a, b) => new Date(`${b.date} ${b.time}`) - new Date(`${a.date} ${a.time}`)
+    ); // Sort by date/time
+
+    sortedGames.forEach(game => {
+      const {
+        date = '—',
+        time = '—',
+        size = 0,
+        moves = 0,
+        score = 0,
+        mode = '—',
+      } = game;
+
+      const summaryMode = mode.charAt(0).toUpperCase() + mode.slice(1);
+      const summarySize = size ? `${size}x${size}` : '—';
+
+      const card = document.createElement('div');
+      card.className = 'game-card';
+
+      const summary = document.createElement('div');
+      summary.className = 'game-card__summary';
+
+      const infoGroup = document.createElement('div');
+      infoGroup.className = 'game-card__info';
+
+      const modeTag = document.createElement('span');
+      modeTag.className = 'game-card__tag';
+      modeTag.textContent = summaryMode;
+
+      const sizeTag = document.createElement('span');
+      sizeTag.className = 'game-card__tag game-card__tag--muted';
+      sizeTag.textContent = summarySize;
+
+      infoGroup.append(modeTag, sizeTag);
+
+      const statsGroup = document.createElement('div');
+      statsGroup.className = 'game-card__stats';
+
+      const movesInfo = document.createElement('span');
+      movesInfo.innerHTML = `<strong>Moves</strong><span>${moves}</span>`;
+
+      const scoreInfo = document.createElement('span');
+      scoreInfo.innerHTML = `<strong>Score</strong><span>${score}</span>`;
+
+      statsGroup.append(movesInfo, scoreInfo);
+
+      const metaLine = document.createElement('span');
+      metaLine.className = 'game-card__meta';
+      metaLine.textContent = `${date} ${time}`;
+
+      summary.append(infoGroup, metaLine, statsGroup);
+      card.append(summary);
+      _elements.gamesList.appendChild(card);
     });
   };
 

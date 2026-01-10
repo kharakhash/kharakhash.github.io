@@ -1,53 +1,122 @@
 /**
  * StateManager - Centralized state management with a Pub/Sub pattern.
- * Provides a single source of truth for the application's state.
+ * Separates game state and UI state while keeping subscribers aware of a flattened state.
  */
 export const StateManager = (() => {
-  let state = {};
+  const GAME_KEYS = new Set([
+    'grid', 'size', 'selectedSize', 'history', 'score', 'moves',
+    'levelMoves', 'totalMoves', 'levelScore', 'totalScore',
+    'isProcessing', 'lastMoveTime', 'touchStartX', 'touchStartY',
+    'initialGrid'
+  ]);
+  const UI_KEYS = new Set(['theme', 'showValues', 'gameMode', 'isOverlayActive']);
+
+  const DEFAULT_GAME_STATE = {
+    grid: [],
+    size: 5,
+    selectedSize: 5,
+    history: [],
+    score: 0,
+    moves: 0,
+    levelMoves: 0,
+    totalMoves: 0,
+    levelScore: 0,
+    totalScore: 0,
+    isProcessing: false,
+    lastMoveTime: 0,
+    touchStartX: null,
+    touchStartY: null,
+    initialGrid: []
+  };
+
+  const DEFAULT_UI_STATE = {
+    theme: 'dark',
+    showValues: true,
+    gameMode: 'infinity',
+    isOverlayActive: false
+  };
+
+  let state = {
+    game: { ...DEFAULT_GAME_STATE },
+    ui: { ...DEFAULT_UI_STATE }
+  };
   const subscribers = new Set();
+  let publishScheduled = false;
 
-  /**
-   * Initializes the state with default or provided values.
-   * @param {Object} initialState - The initial state object.
-   */
-  const initializeState = (initialState) => {
-    state = { ...initialState };
+  const _schedulePublish = () => {
+    if (publishScheduled) return;
+    publishScheduled = true;
+    const schedule = typeof requestAnimationFrame === 'function'
+      ? requestAnimationFrame
+      : (callback) => setTimeout(callback, 16);
+    schedule(() => {
+      publishScheduled = false;
+      publish();
+    });
+  };
+
+  const _getGameState = () => Object.freeze({ ...state.game });
+  const _getUIState = () => Object.freeze({ ...state.ui });
+  const _getFlattenedState = () => {
+    const gameState = _getGameState();
+    const uiState = _getUIState();
+    return Object.freeze({
+      ...gameState,
+      ...uiState,
+      game: gameState,
+      ui: uiState
+    });
+  };
+
+  const _classifyPatch = (patch) => {
+    const { game = {}, ui = {}, ...rest } = patch || {};
+    const gamePatch = { ...game };
+    const uiPatch = { ...ui };
+
+    Object.entries(rest).forEach(([key, value]) => {
+      if (UI_KEYS.has(key)) {
+        uiPatch[key] = value;
+      } else if (GAME_KEYS.has(key)) {
+        gamePatch[key] = value;
+      } else {
+        gamePatch[key] = value;
+      }
+    });
+
+    return { gamePatch, uiPatch };
+  };
+
+  const initializeState = ({ game = {}, ui = {} } = {}) => {
+    state = {
+      game: { ...DEFAULT_GAME_STATE, ...game },
+      ui: { ...DEFAULT_UI_STATE, ...ui }
+    };
     publish();
   };
 
-  /**
-   * Gets the current state.
-   * @returns {Object} The current immutable state.
-   */
-  const getState = () => Object.freeze({ ...state });
+  const getState = () => _getFlattenedState();
+  const getGameState = () => _getGameState();
+  const getUIState = () => _getUIState();
 
-  /**
-   * Updates the state with new values and notifies subscribers.
-   * Merges the new state deeply into the existing state.
-   * @param {Object|Function} newStateOrUpdater - New state object or a function that receives the current state and returns a new state object.
-   */
-  const setState = (newStateOrUpdater) => {
-    const nextState = typeof newStateOrUpdater === 'function' ? newStateOrUpdater(getState()) : newStateOrUpdater;
-    state = { ...state, ...nextState }; // Shallow merge for now, can be deep merged if needed
-    publish();
+  const setState = (patchOrUpdater) => {
+    const currentState = getState();
+    const patch = typeof patchOrUpdater === 'function' ? patchOrUpdater(currentState) : patchOrUpdater;
+    if (!patch || typeof patch !== 'object') return;
+
+    const { gamePatch, uiPatch } = _classifyPatch(patch);
+    state = {
+      game: { ...state.game, ...gamePatch },
+      ui: { ...state.ui, ...uiPatch }
+    };
+    _schedulePublish();
   };
 
-  /**
-   * Subscribes a function to state changes.
-   * @param {Function} callback - The function to call when state changes.
-   * @returns {Function} An unsubscribe function.
-   */
   const subscribe = (callback) => {
     subscribers.add(callback);
-    // Immediately call with current state for initial render/setup
-    callback(getState()); 
+    callback(getState());
     return () => subscribers.delete(callback);
   };
 
-  /**
-   * Publishes the current state to all subscribers.
-   * @private
-   */
   const publish = () => {
     const currentState = getState();
     subscribers.forEach(callback => callback(currentState));
@@ -56,7 +125,9 @@ export const StateManager = (() => {
   return {
     initializeState,
     getState,
+    getGameState,
+    getUIState,
     setState,
-    subscribe,
+    subscribe
   };
 })();

@@ -5,6 +5,9 @@ import { StateManager } from './StateManager.js';
  * AnimationService - Manages all game animations and visual effects.
  */
 export const AnimationService = (() => {
+  const _getCellElement = (elements, row, col) => {
+    return elements?.cells?.[row]?.[col] || document.getElementById(`cell-${row}-${col}`);
+  };
   /**
    * Gets animation class for split direction.
    * @private
@@ -24,8 +27,8 @@ export const AnimationService = (() => {
    * @param {number} deltaRow - Row delta.
    * @param {number} deltaCol - Column delta.
    */
-  const animateCellSplit = (row, col, deltaRow, deltaCol) => {
-    const cell = document.getElementById(`cell-${row}-${col}`);
+  const animateCellSplit = (row, col, deltaRow, deltaCol, elements) => {
+    const cell = _getCellElement(elements, row, col);
     if (!cell) return;
     
     const animationClass = _getSplitAnimationClass(deltaRow, deltaCol);
@@ -48,7 +51,8 @@ export const AnimationService = (() => {
    * @param {Object} elements - Cached DOM elements.
    */
   const animateSplitAppear = (parentRow, parentCol, targetRow, targetCol, value, deltaRow, deltaCol, elements) => {
-    const { size, showValues } = StateManager.getState();
+    const { size } = StateManager.getGameState();
+    const { showValues } = StateManager.getUIState();
     const gameField = elements.game; // Assuming 'game' is cached in elements
     if (!gameField) return;
     
@@ -56,7 +60,7 @@ export const AnimationService = (() => {
     
     // Create and setup temporary animation element
     const tempCell = _createTempAnimationCell(parentRow, parentCol, value, cellSize, showValues);
-    const targetCell = document.getElementById(`cell-${targetRow}-${targetCol}`);
+    const targetCell = _getCellElement(elements, targetRow, targetCol);
     
     if (targetCell) {
       _hideTargetCell(targetCell);
@@ -88,8 +92,9 @@ export const AnimationService = (() => {
       zIndex: '2',
       width: `${cellSize}px`,
       height: `${cellSize}px`,
-      left: `${parentCol * cellSize}px`,
-      top: `${parentRow * cellSize}px`
+      left: '0px',
+      top: '0px',
+      transform: `translate(${parentCol * cellSize}px, ${parentRow * cellSize}px)`
     });
     
     tempCell.dataset.value = value;
@@ -117,9 +122,8 @@ export const AnimationService = (() => {
    */
   const _animateToTarget = (tempCell, targetRow, targetCol, cellSize) => {
     requestAnimationFrame(() => {
-      tempCell.style.transition = `left ${ANIMATION_DURATION}ms, top ${ANIMATION_DURATION}ms`;
-      tempCell.style.left = `${targetCol * cellSize}px`;
-      tempCell.style.top = `${targetRow * cellSize}px`;
+      tempCell.style.transition = `transform ${ANIMATION_DURATION}ms`;
+      tempCell.style.transform = `translate(${targetCol * cellSize}px, ${targetRow * cellSize}px)`;
     });
   };
 
@@ -150,8 +154,8 @@ export const AnimationService = (() => {
    * @param {number} row - Cell row.
    * @param {number} col - Cell column.
    */
-  const animateAndRemoveCell = (row, col) => {
-    const cell = document.getElementById(`cell-${row}-${col}`);
+  const animateAndRemoveCell = (row, col, elements) => {
+    const cell = _getCellElement(elements, row, col);
     if (!cell) return;
     
     cell.classList.add('disappearing');

@@ -44,12 +44,11 @@ export class Game {
       'restartBtn', 'undoBtn', 'toggleDataValue', 'themeToggleBtn', 'saveSettingsBtn',
       'statisticsBtn', 'backFromStatisticsBtn', 'recordMoves', 'recordScore',
       'totalMoves', 'totalScore', 'gamesList', 'clearStatisticsBtn',
-      'gameOverPopup', 'tryAgainBtn', 'tryAnotherBtn', 'gameModeToggleBtn',
+      'gameOverPopup', 'questFailPopup', 'tryAgainBtn', 'tryAnotherBtn', 'tryAnotherInfinityBtn', 'gameModeToggleBtn',
       'questWinPopup', 'winMoves', 'winScore', 'nextQuestLevelBtn',
       'infinityScoreDisplay', 'questScoreDisplay', 'levelMoves', 'totalMovesDisplay',
       'levelScore', 'totalScoreDisplay', 'game', 'scoreContainer',
-      'settingsBtn', 'cancelSettingsBtn', 'tutorialContainer', 'tutorialSlider',
-      'tutorialBtn' // Добавляем tutorialBtn, так как он используется
+      'settingsBtn', 'cancelSettingsBtn'
     ];
     
     elementIds.forEach(id => {
@@ -63,25 +62,29 @@ export class Game {
   setupState() {
     const loadedState = StorageService.loadState();
     StateManager.initializeState({
-      size: loadedState.size || DEFAULT_SIZE,
-      selectedSize: loadedState.selectedSize || DEFAULT_SIZE,
-      grid: [],
-      history: [],
-      score: 0,
-      moves: 0,
-      levelMoves: 0,
-      totalMoves: 0,
-      levelScore: 0,
-      totalScore: 0,
-      isProcessing: false,
-      isOverlayActive: false,
-      lastMoveTime: 0,
-      touchStartX: null,
-      touchStartY: null,
-      theme: loadedState.theme || 'dark',
-      showValues: loadedState.showValues ?? true,
-      gameMode: loadedState.gameMode || 'infinity',
-      initialGrid: [], // for quest mode 'try again'
+      game: {
+        size: loadedState.size || DEFAULT_SIZE,
+        selectedSize: loadedState.selectedSize || DEFAULT_SIZE,
+        grid: [],
+        history: [],
+        score: 0,
+        moves: 0,
+        levelMoves: 0,
+        totalMoves: 0,
+        levelScore: 0,
+        totalScore: 0,
+        isProcessing: false,
+        lastMoveTime: 0,
+        touchStartX: null,
+        touchStartY: null,
+        initialGrid: [],
+      },
+      ui: {
+        theme: loadedState.theme || 'dark',
+        showValues: loadedState.showValues ?? true,
+        gameMode: loadedState.gameMode || 'infinity',
+        isOverlayActive: false,
+      }
     });
   }
 
@@ -89,7 +92,8 @@ export class Game {
    * Creates and initializes game grid.
    */
   createGrid() {
-    const { size, gameMode } = StateManager.getState();
+    const { size } = StateManager.getGameState();
+    const { gameMode } = StateManager.getUIState();
     const gameField = this.elements.game;
     if (!gameField) return;
     
@@ -99,14 +103,17 @@ export class Game {
     gameField.style.gridTemplateRows = `repeat(${size}, 1fr)`;
 
     // Create grid cells
+    const cellMatrix = Array.from({ length: size }, () => Array(size).fill(null));
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
         const cell = document.createElement('div');
         cell.className = 'cell';
         cell.id = `cell-${r}-${c}`;
         gameField.appendChild(cell);
+        cellMatrix[r][c] = cell;
       }
     }
+    this.elements.cells = cellMatrix;
 
     this.placeInitialTiles();
     
@@ -122,7 +129,7 @@ export class Game {
    * Places initial tiles on the grid.
    */
   placeInitialTiles() {
-    const { size } = StateManager.getState();
+    const { size } = StateManager.getGameState();
     const positions = [];
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
@@ -164,7 +171,9 @@ export class Game {
   }
 
   handleSaveSettings() {
-    const { size, selectedSize, gameMode } = StateManager.getState();
+    const { game, ui } = StateManager.getState();
+    const { size, selectedSize } = game;
+    const { gameMode } = ui;
     const newGameModeSetting = this.elements.gameModeToggleBtn.checked ? 'quest' : 'infinity';
 
     if (size !== selectedSize || gameMode !== newGameModeSetting) {

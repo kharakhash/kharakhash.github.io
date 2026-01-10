@@ -9,34 +9,31 @@
 <body>
   <main class="app-container">
     <section id="gameContainer" class="game-container">
-      <div id="buttonsContainer" class="fl-x-row-cow-container">
-        <button id="settingsBtn">set</button>
-        <button id="statisticsBtn">stat</button>
-        <button id="restartBtn">re</button>
+      <div id="mainButtonsContainer" class="fl-x-row-cow-container">
+        <button id="statisticsBtn">statistics</button>
+        <button id="settingsBtn">settings</button>
       </div>
       <div id="scoreContainer" class="fl-x-row-cow-container">
         <div id="infinityScoreDisplay" class="score-display">
-          <span>moves: <span id="moves">0</span></span>
-          <span>score: <span id="score">0</span></span>
+          <span><strong>Moves</strong><span id="moves">0</span></span>
+          <span><strong>Score</strong><span id="score">0</span></span>
         </div>
         <div id="questScoreDisplay" class="score-display hidden">
-          <div class="quest-column">
-            <span>level moves: <span id="levelMoves">0</span></span>
-            <span>total moves: <span id="totalMovesDisplay">0</span></span>
-          </div>
-          <div class="quest-column">
-            <span>level score: <span id="levelScore">0</span></span>
-            <span>total score: <span id="totalScoreDisplay">0</span></span>
-          </div>
+          <span><strong>Level moves</strong><span id="levelMoves">0</span></span>
+          <span><strong>Level score</strong><span id="levelScore">0</span></span>
+          <span><strong>Total moves</strong><span id="totalMovesDisplay">0</span></span>
+          <span><strong>Total score</strong><span id="totalScoreDisplay">0</span></span>
         </div>
       </div>
       <div id="game"></div>
       <div id="buttonContainer" class="fl-x-row-cow-container">
+        <button id="restartBtn">restart</button>
         <button id="undoBtn">undo</button>
       </div>
     </section>
     <section id="settingsContainer" class="settings-container hidden">
       <div id="sizeOptions">
+        <div class="size-square" data-size="3"><span>3x3</span></div>
         <div class="size-square" data-size="4"><span>4x4</span></div>
         <div class="size-square" data-size="5"><span>5x5</span></div>
         <div class="size-square" data-size="7"><span>7x7</span></div>
@@ -58,47 +55,46 @@
           <span>infinity/quest</span>
         </div>
       </div>
-      <div id="buttonsContainer" class="fl-x-row-cow-container">
+      <div id="settingsButtonsContainer" class="fl-x-row-cow-container">
         <button id="saveSettingsBtn">apply</button>
         <button id="cancelSettingsBtn">back</button>
       </div>
     </section>
     <section id="statisticsContainer" class="statistics-container hidden">
       <div class="statistics-content">
-        <h2>Statistics</h2>
         <div class="stats-summary">
           <div>moves record: <span id="recordMoves">0</span></div>
           <div>score record: <span id="recordScore">0</span></div>
           <div>total moves: <span id="totalMoves">0</span></div>
           <div>total score: <span id="totalScore">0</span></div>
         </div>
-        <h3>games</h3>
-        <ul id="gamesList" class="games-list">
-          <!-- Games will be listed here -->
-        </ul>
-        <button id="clearStatisticsBtn" class="clear-button">clear statistics</button>
+        <div class="games-blocks-wrapper">
+          <div id="gamesList" class="games-blocks" aria-live="polite">
+            <!-- Games will be listed here -->
+          </div>
+        </div>
       </div>
-      <div id="buttonsContainer" class="fl-x-row-cow-container">
-         <button id="backFromStatisticsBtn">back</button>
+      <div id="statisticsButtonsContainer" class="fl-x-row-cow-container">
+        <button id="clearStatisticsBtn" class="clear-button">clear statistics</button>
+        <button id="backFromStatisticsBtn">back</button>
       </div>
     </section>
     <section id="gameOverPopup" class="popup-container hidden">
       <div class="popup-content">
-        <h2>game over!</h2>
-        <p>you lose</p>
+        <h2>you failed!</h2>
+        <p>you didn't reach the infinity</p>
         <div class="popup-buttons">
-          <button id="tryAgainBtn">try again</button>
-          <button id="tryAnotherBtn">try another</button>
+          <button id="tryAnotherInfinityBtn">try again</button>
         </div>
       </div>
     </section>
-    <section id="GameOverPopup" class="popup-container hidden">
+    <section id="questFailPopup" class="popup-container hidden">
       <div class="popup-content">
-        <h2>you failed!</h2>
-        <p>you didn't reach the...</p>
+        <h2>game over!</h2>
+        <p>try again?</p>
         <div class="popup-buttons">
-          <button id="tryAgainQuestBtn">try again</button>
-          <button id="backToMenuQuestBtn">back to menu</button>
+          <button id="tryAgainBtn">try again</button>
+          <button id="tryAnotherBtn">try another</button>
         </div>
       </div>
     </section>

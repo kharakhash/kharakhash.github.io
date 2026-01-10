@@ -31,8 +31,6 @@ export class EventHandler {
     this.handleToggleDataValueChange = this.handleToggleDataValueChange.bind(this);
     this.handleGameModeToggleChange = this.handleGameModeToggleChange.bind(this);
     this.handleSizeSelectionClick = this.handleSizeSelectionClick.bind(this);
-    this.handleShowTutorialClick = this.handleShowTutorialClick.bind(this);
-    this.handleTutorialSliderChange = this.handleTutorialSliderChange.bind(this);
   }
 
   /**
@@ -53,6 +51,7 @@ export class EventHandler {
     this.elements.clearStatisticsBtn?.addEventListener('click', ErrorHandler.wrap(this.handleClearStatisticsClick, 'clearStatisticsBtn.click'));
     this.elements.tryAgainBtn?.addEventListener('click', ErrorHandler.wrap(this.handleTryAgainClick, 'tryAgainBtn.click'));
     this.elements.tryAnotherBtn?.addEventListener('click', ErrorHandler.wrap(this.handleTryAnotherClick, 'tryAnotherBtn.click'));
+    this.elements.tryAnotherInfinityBtn?.addEventListener('click', ErrorHandler.wrap(this.handleTryAnotherClick, 'tryAnotherInfinityBtn.click'));
     this.elements.nextQuestLevelBtn?.addEventListener('click', ErrorHandler.wrap(this.handleNextQuestLevelClick, 'nextQuestLevelBtn.click'));
     this.elements.settingsBtn?.addEventListener('click', ErrorHandler.wrap(this.handleShowSettingsClick, 'settingsBtn.click'));
     this.elements.cancelSettingsBtn?.addEventListener('click', ErrorHandler.wrap(this.handleHideSettingsClick, 'cancelSettingsBtn.click'));
@@ -65,9 +64,6 @@ export class EventHandler {
     // Size selection
     this.setupSizeSelection();
     
-    // Tutorial events (if tutorialContainer exists in index.html)
-    this.elements.tutorialBtn?.addEventListener('click', ErrorHandler.wrap(this.handleShowTutorialClick, 'tutorialBtn.click'));
-    this.elements.tutorialSlider?.addEventListener('input', ErrorHandler.wrap(this.handleTutorialSliderChange, 'tutorialSlider.input'));
   }
 
   /**
@@ -189,11 +185,4 @@ export class EventHandler {
     this.game.handleSizeSelection(newSize);
   }
 
-  handleShowTutorialClick() {
-    this.game.handleShowTutorial();
-  }
-
-  handleTutorialSliderChange() {
-    this.game.handleTutorialSliderChange(this.elements.tutorialSlider.value);
-  }
 }

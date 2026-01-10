@@ -24,7 +24,7 @@ export const GameValidator = (() => {
    * @returns {boolean} Can split.
    */
   const canSplit = (value) => {
-    return typeof value === 'number' && value >= 2;
+    return typeof value === 'number' && value >= 1;
   };
 
   /**
@@ -33,7 +33,8 @@ export const GameValidator = (() => {
    * @returns {boolean} Can execute move.
    */
   const canExecuteMove = (elements) => {
-    const { isProcessing, isOverlayActive, lastMoveTime } = StateManager.getState();
+    const { isProcessing, lastMoveTime } = StateManager.getGameState();
+    const { isOverlayActive } = StateManager.getUIState();
     const now = Date.now();
     return !isProcessing &&
            !isOverlayActive &&
@@ -50,6 +51,7 @@ export const GameValidator = (() => {
     return elements.settingsContainer?.classList.contains('visible-flex') ||
            elements.statisticsContainer?.classList.contains('visible-flex') ||
            elements.gameOverPopup?.classList.contains('visible-flex') ||
+           elements.questFailPopup?.classList.contains('visible-flex') ||
            elements.questWinPopup?.classList.contains('visible-flex');
   };
 

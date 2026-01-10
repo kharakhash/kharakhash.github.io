@@ -8,22 +8,24 @@ import { ANIMATION_DURATION } from './constants.js';
  */
 export const UIService = (() => {
   let _elements = {}; // Private variable to store cached DOM elements
+  let _lastGrid = null;
+  let _lastShowValues = null;
 
-  // CSS Custom properties for dynamic cell styling
+  // CSS Custom properties for dynamic cell styling // '#9600a4ff', '#7e025fff', //
   const CELL_COLORS = {
     1: '#454545',
     2: '#FF4487',
     4: '#ff7614',
-    8: '#0ce0a4',
-    16: '#09cdd0',
-    32: '#25ACF2',
-    64: '#166FFA',
+    8: '#b8c902',
+    16: '#32cb21',
+    32: '#34abf5',
+    64: '#246aff',
     128: '#7a2bfa',
     256: '#7700b7',
-    512: '#a400b3',
-    1024: '#7e0246',
-    2048: '#410032',
-    4096: '#270023',
+    512: '#590063ff',
+    1024: '#430043ff',
+    2048: '#630026ff',
+    4096: '#a60016ff',
     null: 'var(--bg-darker)'
   };
 
@@ -34,6 +36,8 @@ export const UIService = (() => {
    */
   const setElements = (elements) => {
     _elements = elements;
+    _lastGrid = null;
+    _lastShowValues = null;
   };
 
   /**
@@ -65,22 +69,37 @@ export const UIService = (() => {
     const { grid, size, showValues } = state;
     if (!_elements.game) return;
 
+    if (!_lastGrid || _lastGrid.length !== size) {
+      _lastGrid = Array.from({ length: size }, () => Array(size).fill(undefined));
+    }
+    const showValuesChanged = _lastShowValues !== showValues;
+    const cells = _elements.cells;
+
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
-        const cell = document.getElementById(`cell-${r}-${c}`);
         const val = grid[r][c];
-        
-        if (cell) {
+        const prevVal = _lastGrid[r][c];
+
+        if (!showValuesChanged && prevVal === val) {
+          continue;
+        }
+
+        const cell = cells?.[r]?.[c] || document.getElementById(`cell-${r}-${c}`);
+        if (!cell) continue;
+
+        if (prevVal !== val) {
           cell.dataset.value = val ?? '';
           cell.style.backgroundColor = CELL_COLORS[val] || CELL_COLORS.null; // Dynamic background color
-          if (showValues) {
-            cell.textContent = val ? (Math.log2(val) - 1) : '';
-          } else {
-            cell.textContent = '';
-          }
+          _lastGrid[r][c] = val;
+        }
+
+        const nextText = showValues ? (val ? (Math.log2(val) - 1) : '') : '';
+        if (cell.textContent !== String(nextText)) {
+          cell.textContent = nextText;
         }
       }
     }
+    _lastShowValues = showValues;
   };
 
   /**
@@ -141,7 +160,8 @@ export const UIService = (() => {
     if (_elements.gameModeToggleBtn) {
       _elements.gameModeToggleBtn.checked = state.gameMode === 'quest';
     }
-    highlightCurrentSize(state.size);
+    const preferredSize = typeof state.selectedSize === 'number' ? state.selectedSize : state.size;
+    highlightCurrentSize(preferredSize);
   };
 
   /**
@@ -213,30 +233,48 @@ export const UIService = (() => {
     toggleSectionVisibility(_elements.gameContainer, true);
     StateManager.setState({ isOverlayActive: false });
     hideGameOverPopup(); // Ensure popup is hidden
+    hideQuestFailPopup();
   };
 
   /**
-   * Hides game over popup.
+   * Hides infinite-mode game over popup.
    */
   const hideGameOverPopup = () => {
     toggleSectionVisibility(_elements.gameOverPopup, false);
   };
 
   /**
-   * Shows game over popup.
+   * Shows infinite-mode game over popup.
    * @param {string} message - Message to display.
-   * @param {number} moves - Moves made (for quest mode).
-   * @param {number} score - Score obtained (for quest mode).
    */
-  const showGameOverPopup = (message, moves = 0, score = 0) => {
+  const showGameOverPopup = (message) => {
     if (_elements.gameOverPopup) {
-      const popupMessage = _elements.gameOverPopup.querySelector('p');
-      if (popupMessage) {
-        popupMessage.textContent = message;
+      const messageNode = _elements.gameOverPopup.querySelector('p');
+      if (messageNode) {
+        messageNode.textContent = message;
       }
-      // Update specific spans for moves/score if needed within the popup
-      // This might require additional elements in index.html or more specific selectors
       toggleSectionVisibility(_elements.gameOverPopup, true);
+    }
+  };
+
+  /**
+   * Hides quest-mode fail popup.
+   */
+  const hideQuestFailPopup = () => {
+    toggleSectionVisibility(_elements.questFailPopup, false);
+  };
+
+  /**
+   * Shows quest-mode fail popup.
+   * @param {string} message - Message to display within quest fail popup.
+   */
+  const showQuestFailPopup = (message) => {
+    if (_elements.questFailPopup) {
+      const messageNode = _elements.questFailPopup.querySelector('p');
+      if (messageNode) {
+        messageNode.textContent = message;
+      }
+      toggleSectionVisibility(_elements.questFailPopup, true);
     }
   };
 
@@ -274,6 +312,8 @@ export const UIService = (() => {
     hideStatistics,
     hideGameOverPopup,
     showGameOverPopup,
+    hideQuestFailPopup,
+    showQuestFailPopup,
     hideQuestWinPopup,
     showQuestWinPopup,
     highlightCurrentSize, // Exported for settings interaction
