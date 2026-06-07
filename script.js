@@ -2,7 +2,7 @@
  * Bulb It - A puzzle game
  * Main application entry point
  * @version 3.0.0
- * @author Cline
+ * @author kharakhash
  */
 
 import { Game } from './src/Game.js';

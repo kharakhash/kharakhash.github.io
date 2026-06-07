@@ -13,7 +13,7 @@ export const UIService = (() => {
 
   // CSS Custom properties for dynamic cell styling // '#9600a4ff', '#7e025fff', //
   const CELL_COLORS = {
-    1: '#454545',
+    1: '#232323ff',
     2: '#FF4487',
     4: '#ff7614',
     8: '#b8c902',

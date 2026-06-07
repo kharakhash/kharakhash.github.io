@@ -32,7 +32,7 @@ export const StateManager = (() => {
   const DEFAULT_UI_STATE = {
     theme: 'dark',
     showValues: true,
-    gameMode: 'infinity',
+    gameMode: 'quest',
     isOverlayActive: false
   };
 

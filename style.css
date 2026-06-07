@@ -84,10 +84,10 @@ body {
 .statistics-container,
 .game-container {
   display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
+  flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-evenly;
+  justify-content: center;
   width: 100%;
   min-height: 100dvh;
   max-width: 500px; /* Ограничение, чтобы на больших экранах не растягивалось */
@@ -176,13 +176,13 @@ body {
 
   #game {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    grid-template-rows: repeat(7, 1fr);
+    grid-template-columns: repeat(7);
+    grid-template-rows: repeat(7);
     gap: 0.7vmin;
     width: 90vmin;
     height: 90vmin;
-    max-height: 500px;
-    max-width: 500px;
+    max-height: 400px;
+    max-width: 400px;
     padding: 6px;
     border-radius: 5px;
     z-index: 1;
@@ -617,8 +617,6 @@ button {
   #game {
     width: 75vmin;
     height: 75vmin;
-    max-height: 700px;
-    max-width: 700px;
   }
 }
 /* No specific styles for min-width: 1025px and max-width: 1440px needed, default styles are usually fine */
