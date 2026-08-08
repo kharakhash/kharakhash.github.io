@@ -15,5 +15,3 @@ node_modules/
 # Standalone tooling not part of the shipped web game
 /minisat
 /sat
-
-/tests
