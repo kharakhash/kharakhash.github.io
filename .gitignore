@@ -1,5 +1,19 @@
-/Архів 2.zip
-/Архів.zip
+# OS junk
+.DS_Store
+**/.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Node
+node_modules/
+
+# Local backup archives (keep out of the repo)
+/Архів*.zip
+
+# Standalone tooling not part of the shipped web game
 /minisat
 /sat
+
 /tests
