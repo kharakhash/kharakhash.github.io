@@ -8,29 +8,24 @@ import { DIRECTION_DELTAS, SWIPE_THRESHOLD } from './modules/constants.js';
 export class EventHandler {
   constructor(elements, game) {
     this.elements = elements;
-    this.game = game; // Reference to the Game instance
+    this.game = game;
     this.touchStartX = null;
     this.touchStartY = null;
+    this._boundHandlers = [];
+  }
 
-    // Bind event handlers to maintain 'this' context
-    this.handleKeyDown = this.handleKeyDown.bind(this);
-    this.handleTouchStart = this.handleTouchStart.bind(this);
-    this.handleTouchEnd = this.handleTouchEnd.bind(this);
-    this.handleRestartClick = this.handleRestartClick.bind(this);
-    this.handleUndoClick = this.handleUndoClick.bind(this);
-    this.handleSaveSettingsClick = this.handleSaveSettingsClick.bind(this);
-    this.handleShowStatisticsClick = this.handleShowStatisticsClick.bind(this);
-    this.handleHideStatisticsClick = this.handleHideStatisticsClick.bind(this);
-    this.handleClearStatisticsClick = this.handleClearStatisticsClick.bind(this);
-    this.handleTryAgainClick = this.handleTryAgainClick.bind(this);
-    this.handleTryAnotherClick = this.handleTryAnotherClick.bind(this);
-    this.handleNextQuestLevelClick = this.handleNextQuestLevelClick.bind(this);
-    this.handleShowSettingsClick = this.handleShowSettingsClick.bind(this);
-    this.handleHideSettingsClick = this.handleHideSettingsClick.bind(this);
-    this.handleThemeToggleChange = this.handleThemeToggleChange.bind(this);
-    this.handleToggleDataValueChange = this.handleToggleDataValueChange.bind(this);
-    this.handleGameModeToggleChange = this.handleGameModeToggleChange.bind(this);
-    this.handleSizeSelectionClick = this.handleSizeSelectionClick.bind(this);
+  /**
+   * Registers an event listener, wraps it with error handling, and tracks it for cleanup.
+   * @param {EventTarget} target - DOM element or window.
+   * @param {string} event - Event name.
+   * @param {Function} handler - Handler method (will be bound to this).
+   * @param {string} context - Error context label.
+   * @param {Object} [options] - addEventListener options.
+   */
+  _addListener(target, event, handler, context, options) {
+    const bound = ErrorHandler.wrap(handler.bind(this), context);
+    this._boundHandlers.push({ target, event, bound, options });
+    target.addEventListener(event, bound, options);
   }
 
   /**
@@ -38,46 +33,75 @@ export class EventHandler {
    */
   setupEventListeners() {
     // Game controls
-    window.addEventListener('keydown', ErrorHandler.wrap(this.handleKeyDown, 'keydown'));
-    window.addEventListener('touchstart', ErrorHandler.wrap(this.handleTouchStart, 'touchstart'));
-    window.addEventListener('touchend', ErrorHandler.wrap(this.handleTouchEnd, 'touchend'));
+    this._addListener(window, 'keydown', this.handleKeyDown, 'keydown');
+    this._addListener(window, 'touchstart', this.handleTouchStart, 'touchstart');
+    this._addListener(window, 'touchend', this.handleTouchEnd, 'touchend');
     
     // Button events
-    this.elements.restartBtn?.addEventListener('click', ErrorHandler.wrap(this.handleRestartClick, 'restartBtn.click'));
-    this.elements.undoBtn?.addEventListener('click', ErrorHandler.wrap(this.handleUndoClick, 'undoBtn.click'));
-    this.elements.saveSettingsBtn?.addEventListener('click', ErrorHandler.wrap(this.handleSaveSettingsClick, 'saveSettingsBtn.click'));
-    this.elements.statisticsBtn?.addEventListener('click', ErrorHandler.wrap(this.handleShowStatisticsClick, 'statisticsBtn.click'));
-    this.elements.backFromStatisticsBtn?.addEventListener('click', ErrorHandler.wrap(this.handleHideStatisticsClick, 'backFromStatisticsBtn.click'));
-    this.elements.clearStatisticsBtn?.addEventListener('click', ErrorHandler.wrap(this.handleClearStatisticsClick, 'clearStatisticsBtn.click'));
-    this.elements.tryAgainBtn?.addEventListener('click', ErrorHandler.wrap(this.handleTryAgainClick, 'tryAgainBtn.click'));
-    this.elements.tryAnotherBtn?.addEventListener('click', ErrorHandler.wrap(this.handleTryAnotherClick, 'tryAnotherBtn.click'));
-    this.elements.tryAnotherInfinityBtn?.addEventListener('click', ErrorHandler.wrap(this.handleTryAnotherClick, 'tryAnotherInfinityBtn.click'));
-    this.elements.nextQuestLevelBtn?.addEventListener('click', ErrorHandler.wrap(this.handleNextQuestLevelClick, 'nextQuestLevelBtn.click'));
-    this.elements.settingsBtn?.addEventListener('click', ErrorHandler.wrap(this.handleShowSettingsClick, 'settingsBtn.click'));
-    this.elements.cancelSettingsBtn?.addEventListener('click', ErrorHandler.wrap(this.handleHideSettingsClick, 'cancelSettingsBtn.click'));
+    if (this.elements.restartBtn) {
+      this._addListener(this.elements.restartBtn, 'click', this.handleRestartClick, 'restartBtn.click');
+    }
+    if (this.elements.undoBtn) {
+      this._addListener(this.elements.undoBtn, 'click', this.handleUndoClick, 'undoBtn.click');
+    }
+    if (this.elements.saveSettingsBtn) {
+      this._addListener(this.elements.saveSettingsBtn, 'click', this.handleSaveSettingsClick, 'saveSettingsBtn.click');
+    }
+    if (this.elements.statisticsBtn) {
+      this._addListener(this.elements.statisticsBtn, 'click', this.handleShowStatisticsClick, 'statisticsBtn.click');
+    }
+    if (this.elements.backFromStatisticsBtn) {
+      this._addListener(this.elements.backFromStatisticsBtn, 'click', this.handleHideStatisticsClick, 'backFromStatisticsBtn.click');
+    }
+    if (this.elements.clearStatisticsBtn) {
+      this._addListener(this.elements.clearStatisticsBtn, 'click', this.handleClearStatisticsClick, 'clearStatisticsBtn.click');
+    }
+    if (this.elements.tryAgainBtn) {
+      this._addListener(this.elements.tryAgainBtn, 'click', this.handleTryAgainClick, 'tryAgainBtn.click');
+    }
+    if (this.elements.tryAnotherBtn) {
+      this._addListener(this.elements.tryAnotherBtn, 'click', this.handleTryAnotherClick, 'tryAnotherBtn.click');
+    }
+    if (this.elements.tryAnotherInfinityBtn) {
+      this._addListener(this.elements.tryAnotherInfinityBtn, 'click', this.handleTryAnotherClick, 'tryAnotherInfinityBtn.click');
+    }
+    if (this.elements.nextQuestLevelBtn) {
+      this._addListener(this.elements.nextQuestLevelBtn, 'click', this.handleNextQuestLevelClick, 'nextQuestLevelBtn.click');
+    }
+    if (this.elements.settingsBtn) {
+      this._addListener(this.elements.settingsBtn, 'click', this.handleShowSettingsClick, 'settingsBtn.click');
+    }
+    if (this.elements.cancelSettingsBtn) {
+      this._addListener(this.elements.cancelSettingsBtn, 'click', this.handleHideSettingsClick, 'cancelSettingsBtn.click');
+    }
     
     // Theme and value display toggles
-    this.elements.themeToggleBtn?.addEventListener('change', ErrorHandler.wrap(this.handleThemeToggleChange, 'themeToggleBtn.change'));
-    this.elements.toggleDataValue?.addEventListener('change', ErrorHandler.wrap(this.handleToggleDataValueChange, 'toggleDataValue.change'));
-    this.elements.gameModeToggleBtn?.addEventListener('change', ErrorHandler.wrap(this.handleGameModeToggleChange, 'gameModeToggleBtn.change'));
+    if (this.elements.themeToggleBtn) {
+      this._addListener(this.elements.themeToggleBtn, 'change', this.handleThemeToggleChange, 'themeToggleBtn.change');
+    }
+    if (this.elements.toggleDataValue) {
+      this._addListener(this.elements.toggleDataValue, 'change', this.handleToggleDataValueChange, 'toggleDataValue.change');
+    }
+    if (this.elements.gameModeToggleBtn) {
+      this._addListener(this.elements.gameModeToggleBtn, 'change', this.handleGameModeToggleChange, 'gameModeToggleBtn.change');
+    }
     
     // Size selection
     this.setupSizeSelection();
-    
   }
 
   /**
    * Sets up size selection event listeners.
    */
-  setupSizeSelection = () => {
-    const sizeOptions = document.getElementById('sizeOptions'); // Need to get this element
+  setupSizeSelection() {
+    const sizeOptions = document.getElementById('sizeOptions');
     if (!sizeOptions) return;
 
     const sizeSquares = sizeOptions.querySelectorAll('.size-square');
-    sizeSquares.forEach(square => {
-      square.addEventListener('click', ErrorHandler.wrap(this.handleSizeSelectionClick, 'size.selection'));
-    });
-  };
+    for (const square of sizeSquares) {
+      this._addListener(square, 'click', this.handleSizeSelectionClick, 'size.selection');
+    }
+  }
 
   handleKeyDown(e) {
     if (Object.keys(DIRECTION_DELTAS).includes(e.key)) {
@@ -185,4 +209,13 @@ export class EventHandler {
     this.game.handleSizeSelection(newSize);
   }
 
+  /**
+   * Removes all registered event listeners and cleans up resources.
+   */
+  destroy() {
+    for (const { target, event, bound, options } of this._boundHandlers) {
+      target.removeEventListener(event, bound, options);
+    }
+    this._boundHandlers = [];
+  }
 }

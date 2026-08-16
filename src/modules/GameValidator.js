@@ -1,5 +1,6 @@
 import { StateManager } from './StateManager.js';
-import { DEBOUNCE_TIME } from './constants.js'; // Импортируем DEBOUNCE_TIME
+import { GridService } from './GridService.js';
+import { DEBOUNCE_TIME } from './constants.js';
 
 /**
  * GameValidator - Provides validation logic for game rules and state.
@@ -12,10 +13,8 @@ export const GameValidator = (() => {
    * @returns {boolean} Is valid position.
    */
   const isValidPosition = (row, col) => {
-    const { size } = StateManager.getState();
-    return Number.isInteger(row) && Number.isInteger(col) &&
-           row >= 0 && row < size && 
-           col >= 0 && col < size;
+    const { size } = StateManager.getGameState();
+    return GridService.isValidPosition(row, col, size);
   };
 
   /**

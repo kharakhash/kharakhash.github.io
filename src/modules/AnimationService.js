@@ -74,7 +74,7 @@ export const AnimationService = (() => {
     // Clean up after animation
     setTimeout(() => {
       _cleanupSplitAnimation(tempCell, targetCell, targetRow, targetCol, value, deltaRow, deltaCol, showValues);
-    }, ANIMATION_DURATION + 50); // Extra 50ms to ensure animation completion
+    }, ANIMATION_DURATION);
   };
 
   /**
@@ -175,7 +175,7 @@ export const AnimationService = (() => {
     if (!cell) return;
     
     cell.classList.add('appearing');
-    setTimeout(() => cell.classList.remove('appearing'), ANIMATION_DURATION);
+    setTimeout(() => cell.classList.remove('appearing'), ANIMATION_DURATION * 3);
   };
 
   return {

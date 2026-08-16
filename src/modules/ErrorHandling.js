@@ -19,7 +19,7 @@ export const ErrorHandler = (() => {
    * @returns {Function} Wrapped function.
    */
   const wrap = (fn, context) => {
-    return (...args) => {
+    return function wrapped(...args) {
       try {
         return fn.apply(this, args);
       } catch (error) {

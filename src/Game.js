@@ -5,29 +5,29 @@ import { UIService } from './modules/UIService.js';
 import { StatisticsService } from './modules/StatisticsService.js';
 import { GameLogic } from './modules/GameLogic.js';
 import { GridService } from './modules/GridService.js';
-import { EventHandler } from './EventHandler.js'; // New EventHandler class
-import { DEFAULT_SIZE, INITIAL_TILES, DIRECTION_DELTAS } from './modules/constants.js';
+import { AnimationService } from './modules/AnimationService.js';
+import { EventHandler } from './EventHandler.js';
+import { DEFAULT_SIZE, INITIAL_TILES, ANIMATION_DURATION } from './modules/constants.js';
 
 export class Game {
   constructor() {
     this.elements = {};
-    this.eventHandler = null; // Будет инициализирован после кэширования элементов
+    this.eventHandler = null;
   }
 
   init() {
     try {
       this.cacheElements();
-      this.eventHandler = new EventHandler(this.elements, this); // Передаем elements и экземпляр Game
+      this.eventHandler = new EventHandler(this.elements, this);
       this.setupState();
       
       UIService.setElements(this.elements);
       StatisticsService.setElements(this.elements);
-      GameLogic.setGameContext(this); // Передаем экземпляр Game в GameLogic
 
       this.eventHandler.setupEventListeners();
       this.createGrid();
 
-      // Обновить UI после инициализации
+      // Refresh UI after initialization
       UIService.render(StateManager.getState());
       UIService.highlightCurrentSize(StateManager.getState().size);
     } catch (error) {
@@ -51,9 +51,9 @@ export class Game {
       'settingsBtn', 'cancelSettingsBtn'
     ];
     
-    elementIds.forEach(id => {
+    for (const id of elementIds) {
       this.elements[id] = document.getElementById(id);
-    });
+    }
   }
 
   /**
@@ -145,25 +145,100 @@ export class Game {
 
     const initialTiles = INITIAL_TILES[size] || [64, 32, 16];
     
-    StateManager.setState((prevState) => {
-      const newGrid = GridService.createEmptyGrid(size); // Start with empty grid
-      initialTiles.forEach((value, index) => {
+    StateManager.setState(() => {
+      const newGrid = GridService.createEmptyGrid(size);
+      for (let index = 0; index < initialTiles.length; index++) {
         if (index < positions.length) {
           const [r, c] = positions[index];
-          newGrid[r][c] = value;
+          newGrid[r][c] = initialTiles[index];
         }
-      });
+      }
       return { grid: newGrid };
     });
   }
 
-  // Методы, которые EventBus будет вызывать
+  // --- Animation coordination (moved from GameLogic) ---
+
+  /**
+   * Plays split animations for the given actions.
+   * @param {Array} splitActions - Split metadata from GameCore.
+   */
+  _animateSplitActions(splitActions) {
+    if (!splitActions || splitActions.length === 0) return;
+    for (const action of splitActions) {
+      const targetRow = action.to ? action.to.row : action.from.row;
+      const targetCol = action.to ? action.to.col : action.from.col;
+      AnimationService.animateSplitAppear(
+        action.from.row, action.from.col,
+        targetRow, targetCol,
+        action.value, action.deltaRow, action.deltaCol,
+        this.elements
+      );
+      AnimationService.animateCellSplit(
+        action.from.row, action.from.col,
+        action.deltaRow, action.deltaCol,
+        this.elements
+      );
+    }
+  }
+
+  /**
+   * Schedules disappearing cell animations and delegates state update to GameLogic.
+   * @param {Array} disappearingCells - Cells that should disappear.
+   */
+  _handleDisappearingCells(disappearingCells) {
+    if (!disappearingCells || disappearingCells.length === 0) {
+      GameLogic.processDisappearingCells(disappearingCells);
+      return;
+    }
+
+    setTimeout(() => {
+      // Animate removal
+      for (const { row, col } of disappearingCells) {
+        AnimationService.animateAndRemoveCell(row, col, this.elements);
+      }
+      // Delegate state update to GameLogic
+      GameLogic.processDisappearingCells(disappearingCells);
+    }, ANIMATION_DURATION * 2); // Slightly longer than animation duration to ensure completion
+  }
+
+    /**
+   * Plays appearing animation for a newly spawned random cell.
+   * @param {Object|undefined} spawnedCell - Spawned cell info.
+   */
+  _animateRandomCell(spawnedCell) {
+    if (!spawnedCell) return;
+    const { row, col } = spawnedCell.position;
+    const cellElement = this.elements.cells?.[row]?.[col]
+      || document.getElementById(`cell-${row}-${col}`);
+    if (cellElement) {
+      AnimationService.animateCellAppearing(cellElement);
+    }
+  }
+
+  /**
+   * Interprets an intent returned by GameLogic.
+   * @param {{ action: string } | null} intent
+   */
+  _handleIntent(intent) {
+    if (intent && intent.action === 'PLACE_INITIAL_TILES') {
+      this.placeInitialTiles();
+    }
+  }
+
+  // --- Event handlers (called by EventHandler) ---
+
   handleMove(direction) {
-    GameLogic.move(direction);
+    const result = GameLogic.move(direction, this.elements);
+    if (!result) return;
+    // Coordinate animations
+    this._animateSplitActions(result.effects.splitActions);
+    this._animateRandomCell(result.effects.spawnedCell);
+    this._handleDisappearingCells(result.effects.disappearingCells);
   }
 
   handleRestart() {
-    GameLogic.restart();
+    this._handleIntent(GameLogic.restart());
   }
 
   handleUndo() {
@@ -177,11 +252,10 @@ export class Game {
     const newGameModeSetting = this.elements.gameModeToggleBtn.checked ? 'quest' : 'infinity';
 
     if (size !== selectedSize || gameMode !== newGameModeSetting) {
-      GameLogic._saveCurrentGameStats(StateManager.getState()); // Save current game before changing size or mode
+      GameLogic.saveCurrentGameStats(StateManager.getState());
       StateManager.setState({ 
         size: selectedSize, 
         gameMode: newGameModeSetting,
-        // Reset game-specific state when size/mode changes
         moves: 0,
         score: 0,
         levelMoves: 0,
@@ -192,7 +266,7 @@ export class Game {
         isProcessing: false,
         initialGrid: [],
       });
-      this.createGrid(); // Re-create grid with new size/mode
+      this.createGrid();
     }
     
     StorageService.saveState();
@@ -213,15 +287,15 @@ export class Game {
   }
 
   handleTryAgainQuestMode() {
-    GameLogic.tryAgainQuestMode();
+    this._handleIntent(GameLogic.tryAgainQuestMode());
   }
 
   handleTryAnotherQuestMode() {
-    GameLogic.tryAnotherQuestMode();
+    this._handleIntent(GameLogic.tryAnotherQuestMode());
   }
 
   handleNextQuestLevel() {
-    GameLogic.startNextQuestLevel();
+    this._handleIntent(GameLogic.startNextQuestLevel());
   }
 
   handleShowSettings() {
@@ -250,5 +324,4 @@ export class Game {
     StateManager.setState({ selectedSize: newSize });
     UIService.highlightCurrentSize(newSize);
   }
-
 }

@@ -7,7 +7,7 @@ import { UIService } from './UIService.js';
  * @param {Object} state - Flattened state to inspect.
  * @returns {Object|null} Payload for StorageService or null when nothing to save.
  */
-const _buildStatsPayload = (state) => {
+const buildStatsPayload = (state) => {
   if (state.gameMode === 'infinity' && state.moves > 0) {
     return {
       date: new Date().toLocaleDateString(),
@@ -36,68 +36,86 @@ const _buildStatsPayload = (state) => {
 };
 
 const saveCurrentGameStats = (state) => {
-  const payload = _buildStatsPayload(state);
+  const payload = buildStatsPayload(state);
   if (!payload) return null;
   return StorageService.saveGameStats(payload);
 };
 
-const _applyInfinityCounters = (prevState/* , oldState */) => ({
-  moves: prevState.moves + 1,
-});
+// --- Built-in mode strategies ---
 
-const _applyQuestCounters = (prevState/* , oldState */) => ({
-  levelMoves: prevState.levelMoves + 1,
-  totalMoves: prevState.totalMoves + 1,
-});
-
-const _applyInfinityScore = (prevState, delta) => {
-  if (!delta) return {};
-  return { score: prevState.score + delta };
-};
-
-const _applyQuestScore = (prevState, delta) => {
-  if (!delta) return {};
-  return {
-    levelScore: prevState.levelScore + delta,
-    totalScore: prevState.totalScore + delta,
-  };
-};
-
-const _handleInfinityLose = (state) => {
-  console.log('Infinity Mode: you have no valid moves');
-  saveCurrentGameStats(state);
-  UIService.showGameOverPopup('you didn\'t reach the infinity');
-};
-
-const _handleQuestLose = (state) => {
-  console.log('Quest Mode: You Lose!');
-  saveCurrentGameStats(state);
-  UIService.showQuestFailPopup('you lose, try again?');
-  UIService.hideGameOverPopup();
-  StateManager.setState({ totalMoves: 0, totalScore: 0 });
-};
-
-const _handleQuestWin = (state) => {
-  console.log('Quest Mode: You Win!');
-  saveCurrentGameStats(state);
-  UIService.showQuestWinPopup(state.levelMoves, state.levelScore);
-};
-
-export const ModeRules = {
-  infinity: {
-    applyMoveCounters: (prevState, oldState) => _applyInfinityCounters(prevState, oldState),
-    applyScore: (prevState, delta) => _applyInfinityScore(prevState, delta),
-    onLose: _handleInfinityLose,
-    onWin: () => {},
+const infinityStrategy = {
+  applyMoveCounters: (prevState) => ({
+    moves: prevState.moves + 1,
+  }),
+  applyScore: (prevState, delta) => {
+    if (!delta) return {};
+    return { score: prevState.score + delta };
   },
-  quest: {
-    applyMoveCounters: (prevState, oldState) => _applyQuestCounters(prevState, oldState),
-    applyScore: (prevState, delta) => _applyQuestScore(prevState, delta),
-    onLose: _handleQuestLose,
-    onWin: _handleQuestWin,
+  onLose: (state) => {
+    saveCurrentGameStats(state);
+    UIService.showGameOverPopup("you didn't reach the infinity");
+  },
+  onWin: () => {},
+};
+
+const questStrategy = {
+  applyMoveCounters: (prevState) => ({
+    levelMoves: prevState.levelMoves + 1,
+    totalMoves: prevState.totalMoves + 1,
+  }),
+  applyScore: (prevState, delta) => {
+    if (!delta) return {};
+    return {
+      levelScore: prevState.levelScore + delta,
+      totalScore: prevState.totalScore + delta,
+    };
+  },
+  onLose: (state) => {
+    saveCurrentGameStats(state);
+    UIService.showQuestFailPopup('you lose, try again?');
+    UIService.hideGameOverPopup();
+    StateManager.setState({ totalMoves: 0, totalScore: 0 });
+  },
+  onWin: (state) => {
+    saveCurrentGameStats(state);
+    UIService.showQuestWinPopup(state.levelMoves, state.levelScore);
   },
 };
 
-export const getModeRules = (mode) => ModeRules[mode] || ModeRules.infinity;
+// --- Mode registry ---
 
-export { saveCurrentGameStats };
+const modeRegistry = new Map([
+  ['infinity', infinityStrategy],
+  ['quest', questStrategy],
+]);
+
+/**
+ * Registers a new game mode strategy.
+ * Enables adding modes without modifying existing code (Open/Closed Principle).
+ * @param {string} modeName - Unique mode identifier.
+ * @param {Object} strategy - Mode strategy implementing { applyMoveCounters, applyScore, onLose, onWin }.
+ */
+const registerMode = (modeName, strategy) => {
+  const required = ['applyMoveCounters', 'applyScore', 'onLose', 'onWin'];
+  for (const method of required) {
+    if (typeof strategy[method] !== 'function') {
+      throw new Error(`[ModeRules] Strategy "${modeName}" is missing required method "${method}".`);
+    }
+  }
+  modeRegistry.set(modeName, strategy);
+};
+
+/**
+ * Returns the strategy for the given mode, falling back to infinity.
+ * @param {string} mode - Game mode name.
+ * @returns {Object} Mode strategy.
+ */
+const getModeRules = (mode) => modeRegistry.get(mode) || infinityStrategy;
+
+/**
+ * Returns all registered mode names.
+ * @returns {string[]} Array of registered mode names.
+ */
+const getRegisteredModes = () => [...modeRegistry.keys()];
+
+export { getModeRules, registerMode, getRegisteredModes, saveCurrentGameStats };

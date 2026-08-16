@@ -57,14 +57,6 @@
 .cell[data-value="2048"] { background: var(--cell-2048); }
 .cell[data-value="4096"] { background: var(--cell-4096); }
 
-
-/* Тёмная тема */
-
-/* .cell[data-value="2"]: Ячейка с числом 2.
-   Фон — var(--cell-2), текст — само значение (2) */
-
-/* Для всех .cell: текстовое содержимое = data-value (см. JS, например: cell.textContent = val ?? '') */
-
 body {
   display: flex;
   flex-direction: column;

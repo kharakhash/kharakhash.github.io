@@ -201,12 +201,35 @@ export const StorageService = (() => {
     safeRemoveItem(LOCAL_STORAGE_KEYS.STATS_STORE);
   };
 
+  /**
+   * Migrates localStorage data if the schema version has changed.
+   * Preserves backward compatibility with older data formats.
+   */
+  const migrateIfNeeded = () => {
+    const store = loadStatsStore();
+    if (!store.version || store.version < STATS_SCHEMA_VERSION) {
+      // Future migrations go here, keyed by version number.
+      // Example:
+      // if (store.version < 2) { /* migrate v1 → v2 */ }
+      const migrated = {
+        ...store,
+        version: STATS_SCHEMA_VERSION,
+        metadata: {
+          ...store.metadata,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+      persistStatsStore(migrated);
+    }
+  };
+
   return {
     saveState,
     loadState,
     saveGameStats,
     loadAllGamesStats,
     clearAllGamesStats,
-    getStatsStore
+    getStatsStore,
+    migrateIfNeeded
   };
 })();

@@ -11,23 +11,7 @@ export const UIService = (() => {
   let _lastGrid = null;
   let _lastShowValues = null;
 
-  // CSS Custom properties for dynamic cell styling // '#9600a4ff', '#7e025fff', //
-  const CELL_COLORS = {
-    1: '#232323ff',
-    2: '#FF4487',
-    4: '#ff7614',
-    8: '#b8c902',
-    16: '#32cb21',
-    32: '#34abf5',
-    64: '#246aff',
-    128: '#7a2bfa',
-    256: '#7700b7',
-    512: '#590063ff',
-    1024: '#430043ff',
-    2048: '#630026ff',
-    4096: '#a60016ff',
-    null: 'var(--bg-darker)'
-  };
+
 
   /**
    * Sets the cached DOM elements for the UIService to use.
@@ -45,7 +29,9 @@ export const UIService = (() => {
    * @param {string} theme - 'light' or 'dark'.
    */
   const applyTheme = (theme) => {
-    document.body.classList.toggle('light-theme', theme === 'light');
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.toggle('light-theme', theme === 'light');
+    }
   };
 
   /**
@@ -54,6 +40,7 @@ export const UIService = (() => {
    * @param {Object} state - The current game state.
    */
   const render = (state) => {
+    if (typeof document === 'undefined') return;
     applyTheme(state.theme);
     renderGrid(state);
     updateScoreAndMoves(state);
@@ -89,7 +76,6 @@ export const UIService = (() => {
 
         if (prevVal !== val) {
           cell.dataset.value = val ?? '';
-          cell.style.backgroundColor = CELL_COLORS[val] || CELL_COLORS.null; // Dynamic background color
           _lastGrid[r][c] = val;
         }
 
@@ -169,6 +155,7 @@ export const UIService = (() => {
    * @param {number} currentSize - The current grid size from state.
    */
   const highlightCurrentSize = (currentSize) => {
+    if (typeof document === 'undefined') return;
     const sizeSquares = document.querySelectorAll('.size-square');
     sizeSquares.forEach(square => {
       const squareSize = parseInt(square.dataset.size, 10);

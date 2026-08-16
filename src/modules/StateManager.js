@@ -79,6 +79,7 @@ export const StateManager = (() => {
       } else if (GAME_KEYS.has(key)) {
         gamePatch[key] = value;
       } else {
+        console.warn(`[StateManager] Unclassified key "${key}" — defaulting to game state.`);
         gamePatch[key] = value;
       }
     });

@@ -8,11 +8,11 @@ const createProcessingOrder = (size, deltaRow, deltaCol) => {
   const rows = Array.from({ length: size }, (_, index) => deltaRow > 0 ? size - 1 - index : index);
   const cols = Array.from({ length: size }, (_, index) => deltaCol > 0 ? size - 1 - index : index);
   const order = [];
-  rows.forEach((row) => {
-    cols.forEach((col) => {
+  for (const row of rows) {
+    for (const col of cols) {
       order.push({ row, col });
-    });
-  });
+    }
+  }
   return order;
 };
 
@@ -89,10 +89,10 @@ export const GameCore = {
     const splitActions = [];
     let changed = false;
 
-    ordering.forEach(({ row, col }) => {
+    for (const { row, col } of ordering) {
       const value = grid[row][col];
       if (typeof value !== 'number' || value < 2) {
-        return;
+        continue;
       }
       const cellChanged = applyMoveToCell(
         state,
@@ -106,7 +106,7 @@ export const GameCore = {
         splitActions
       );
       changed = changed || cellChanged;
-    });
+    }
 
     let spawnedCellPayload = null;
     if (changed) {

@@ -22,18 +22,7 @@ export const PerformanceUtils = (() => {
     };
   };
 
-  /**
-   * Batches DOM updates using requestAnimationFrame.
-   * @param {Function} callback - Update callback.
-   */
-  const batchUpdate = (callback) => {
-    requestAnimationFrame(() => {
-      callback();
-    });
-  };
-
   return {
     debounce,
-    batchUpdate,
   };
 })();

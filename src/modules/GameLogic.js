@@ -2,7 +2,6 @@ import { StateManager } from './StateManager.js';
 import { GameValidator } from './GameValidator.js';
 import { GridService } from './GridService.js';
 import { ErrorHandler } from './ErrorHandling.js';
-import { AnimationService } from './AnimationService.js';
 import { UIService } from './UIService.js';
 import { GameCore } from '../core/GameCore.js';
 import { getModeRules, saveCurrentGameStats } from './ModeRules.js';
@@ -11,33 +10,27 @@ import { MAX_HISTORY_SIZE, ANIMATION_DURATION } from './constants.js';
 
 /**
  * GameLogic - Core game rules and mechanics.
+ * Pure logic module — no DOM access, no Game instance reference.
+ * Methods that need post-processing (e.g. placing tiles) return intent objects
+ * that the Game coordinator interprets.
  */
 export const GameLogic = (() => {
-  let _gameInstance = null; // Private variable to store the Game instance
-
-  /**
-   * Sets the Game instance for GameLogic to interact with.
-   * This should be called once during game initialization.
-   * @param {Object} gameInstance - The Game instance.
-   */
-  const setGameContext = (gameInstance) => {
-    _gameInstance = gameInstance;
-  };
-
   /**
    * Validates and executes game move in specified direction.
    * @param {string} direction - Direction key (ArrowUp, ArrowDown, etc.).
+   * @param {Object} elements - Cached DOM elements for validation.
+   * @returns {{ effects: Object } | null} Move effects for animation, or null if move didn't happen.
    */
-  const move = (direction) => {
-    if (!_gameInstance || !GameValidator.canExecuteMove(_gameInstance.elements)) return;
-    
+  const move = (direction, elements) => {
+    if (!GameValidator.canExecuteMove(elements)) return null;
+
     StateManager.setState({ lastMoveTime: Date.now(), isProcessing: true });
 
     try {
       const state = StateManager.getState();
       const result = GameCore.computeMove(state, direction);
       if (!result.changed) {
-        return;
+        return null;
       }
 
       const historyEntry = SnapshotService.makeSnapshot(state);
@@ -56,79 +49,53 @@ export const GameLogic = (() => {
         };
       });
 
-      _animateSplitActions(result.effects.splitActions);
-      _animateRandomCell(result.effects.spawnedCell);
-      _handleDisappearingCells(result.effects.disappearingCells);
+      return {
+        effects: result.effects,
+      };
     } catch (error) {
       ErrorHandler.handle(error, 'GameLogic.move');
+      return null;
     } finally {
       StateManager.setState({ isProcessing: false });
     }
   };
-  const _handleDisappearingCells = (disappearingCells) => {
+
+  /**
+   * Processes disappearing cells: updates grid, applies score, checks game status.
+   * Called by the animation coordinator after the animation delay.
+   * @param {Array<{row: number, col: number}>} disappearingCells - Cells to remove.
+   */
+  const processDisappearingCells = (disappearingCells) => {
     if (!disappearingCells || disappearingCells.length === 0) {
-      _checkGameStatus(StateManager.getState());
+      checkGameStatus(StateManager.getState());
       return;
     }
-    
-    setTimeout(() => {
-      const state = StateManager.getState();
-      const updatedGrid = GridService.cloneGrid(state.grid);
-      let scoreGain = 0;
-      
-      disappearingCells.forEach(({ row, col }) => {
-        if (updatedGrid[row][col] === 2) {
-          AnimationService.animateAndRemoveCell(row, col, _gameInstance?.elements);
-          updatedGrid[row][col] = null;
-          scoreGain += 1;
-        }
-      });
-      
-      StateManager.setState((prevState) => {
-        const modeRules = getModeRules(prevState.gameMode);
-        const scorePatch = modeRules.applyScore(prevState, scoreGain);
-        return {
-          grid: updatedGrid,
-          ...scorePatch,
-        };
-      });
 
-      if (scoreGain > 0) {
-        UIService.showScorePopup(scoreGain);
+    const state = StateManager.getState();
+    const updatedGrid = GridService.cloneGrid(state.grid);
+    let scoreGain = 0;
+
+    for (const { row, col } of disappearingCells) {
+      if (updatedGrid[row][col] === 2) {
+        updatedGrid[row][col] = null;
+        scoreGain += 1;
       }
-
-      _checkGameStatus(StateManager.getState());
-    }, ANIMATION_DURATION * 2);
-  };
-
-  const _animateSplitActions = (splitActions) => {
-    if (!splitActions || splitActions.length === 0 || !_gameInstance) return;
-    const elements = _gameInstance.elements;
-    splitActions.forEach((action) => {
-      const targetRow = action.to ? action.to.row : action.from.row;
-      const targetCol = action.to ? action.to.col : action.from.col;
-      AnimationService.animateSplitAppear(
-        action.from.row,
-        action.from.col,
-        targetRow,
-        targetCol,
-        action.value,
-        action.deltaRow,
-        action.deltaCol,
-        elements
-      );
-      AnimationService.animateCellSplit(action.from.row, action.from.col, action.deltaRow, action.deltaCol, elements);
-    });
-  };
-
-  const _animateRandomCell = (spawnedCell) => {
-    if (!spawnedCell) return;
-    const { row, col } = spawnedCell.position;
-    const cellElement = _gameInstance?.elements?.cells?.[row]?.[col]
-      || document.getElementById(`cell-${row}-${col}`);
-    if (cellElement) {
-      AnimationService.animateCellAppearing(cellElement);
     }
+
+    StateManager.setState((prevState) => {
+      const modeRules = getModeRules(prevState.gameMode);
+      const scorePatch = modeRules.applyScore(prevState, scoreGain);
+      return {
+        grid: updatedGrid,
+        ...scorePatch,
+      };
+    });
+
+    if (scoreGain > 0) {
+      UIService.showScorePopup(scoreGain);
+    }
+
+    checkGameStatus(StateManager.getState());
   };
 
   /**
@@ -137,7 +104,7 @@ export const GameLogic = (() => {
   const undo = () => {
     const state = StateManager.getState();
     if (state.history.length === 0) return;
-    
+
     try {
       const [lastSnapshot] = state.history;
       const restored = SnapshotService.restoreSnapshot(lastSnapshot);
@@ -145,85 +112,91 @@ export const GameLogic = (() => {
         ...restored,
         history: prevState.history.slice(1),
       }));
-      UIService.hideGameOverPopup(); // In case undoing from a lose state
+      UIService.hideGameOverPopup();
     } catch (error) {
       ErrorHandler.handle(error, 'GameLogic.undo');
     }
   };
 
   /**
-   * Restarts game with fresh state.
+   * Builds restart state patch. Returns an intent for the Game coordinator.
+   * @returns {{ patch: Object, action: string }}
    */
   const restart = () => {
     const state = StateManager.getState();
-    _saveCurrentGameStats(state); // Save current game before restarting
-    
-    StateManager.setState((prevState) => ({
+    saveCurrentGameStats(state);
+
+    const patch = {
       moves: 0,
       score: 0,
       levelMoves: 0,
-      totalMoves: prevState.gameMode === 'quest' ? 0 : prevState.totalMoves, // Reset total only if starting new quest series
+      totalMoves: state.gameMode === 'quest' ? 0 : state.totalMoves,
       levelScore: 0,
-      totalScore: prevState.gameMode === 'quest' ? 0 : prevState.totalScore, // Reset total only if starting new quest series
+      totalScore: state.gameMode === 'quest' ? 0 : state.totalScore,
       history: [],
-      disappear: {}, // This property is no longer managed directly in state, it's temporary for animations
       isProcessing: false,
-      grid: GridService.createEmptyGrid(prevState.size), // Create empty grid
-    }));
-    _gameInstance.placeInitialTiles(); // Place initial tiles using Game instance
+      grid: GridService.createEmptyGrid(state.size),
+    };
+
+    StateManager.setState(patch);
     UIService.hideGameOverPopup();
     UIService.hideQuestWinPopup();
+
+    return { action: 'PLACE_INITIAL_TILES' };
   };
 
   /**
    * Restarts game in Quest mode with the same initial grid.
+   * @returns {{ action: string } | null}
    */
   const tryAgainQuestMode = () => {
     const state = StateManager.getState();
     if (state.gameMode === 'quest' && state.initialGrid.length > 0) {
-      _saveCurrentGameStats(state);
+      saveCurrentGameStats(state);
       StateManager.setState((prevState) => ({
         levelMoves: 0,
         levelScore: 0,
         history: [],
         isProcessing: false,
-        grid: GridService.cloneGrid(prevState.initialGrid), // Restore initial grid
+        grid: GridService.cloneGrid(prevState.initialGrid),
       }));
       UIService.hideQuestFailPopup();
       UIService.hideGameOverPopup();
-    } else {
-      restart(); // Fallback to regular restart if not in quest mode or no initial grid
+      return null; // No tile placement needed — grid restored from snapshot
     }
+    return restart(); // Fallback
   };
 
   /**
    * Restarts game in Quest mode with a newly generated grid.
+   * @returns {{ action: string }}
    */
   const tryAnotherQuestMode = () => {
-    restart(); // This will create a new grid, resetting all quest counters
+    const result = restart();
     UIService.hideQuestFailPopup();
+    return result;
   };
 
   /**
-   * Starts the next quest level, generating a new grid but keeping current total moves and score.
+   * Starts the next quest level.
+   * @returns {{ action: string }}
    */
   const startNextQuestLevel = () => {
-    UIService.hideQuestWinPopup(); // Hide the win popup
+    UIService.hideQuestWinPopup();
     StateManager.setState((prevState) => ({
       levelMoves: 0,
       levelScore: 0,
-      history: [], // Clear history for new level
-      grid: GridService.createEmptyGrid(prevState.size), // Create empty grid
+      history: [],
+      grid: GridService.createEmptyGrid(prevState.size),
     }));
-    _gameInstance.placeInitialTiles(); // Place new initial tiles using Game instance
+    return { action: 'PLACE_INITIAL_TILES' };
   };
 
   /**
    * Checks win/lose conditions and delegates mode-specific reactions.
-   * @private
    * @param {Object} state - Current flattened game state.
    */
-  const _checkGameStatus = (state) => {
+  const checkGameStatus = (state) => {
     const modeRules = getModeRules(state.gameMode);
 
     if (state.gameMode === 'quest') {
@@ -241,17 +214,15 @@ export const GameLogic = (() => {
     }
   };
 
-  const _saveCurrentGameStats = (state) => saveCurrentGameStats(state);
-
   return {
     move,
+    processDisappearingCells,
     undo,
     restart,
     tryAgainQuestMode,
     tryAnotherQuestMode,
     startNextQuestLevel,
-    setGameContext, // Export the setter for the Game instance
-    _checkGameStatus, // Export for initial setup
-    _saveCurrentGameStats, // Export for game setup
+    checkGameStatus,
+    saveCurrentGameStats,
   };
-})(); // Removed IIFE parameters
+})();
