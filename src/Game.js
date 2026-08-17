@@ -6,8 +6,10 @@ import { StatisticsService } from './modules/StatisticsService.js';
 import { GameLogic } from './modules/GameLogic.js';
 import { GridService } from './modules/GridService.js';
 import { AnimationService } from './modules/AnimationService.js';
+import { LevelEditor } from './levels-builder/LevelEditor.js';
 import { EventHandler } from './EventHandler.js';
-import { DEFAULT_SIZE, INITIAL_TILES, ANIMATION_DURATION } from './modules/constants.js';
+import { AkureLevelGenerator } from './modules/AkureLevelGenerator.js';
+import { DEFAULT_SIZE, INITIAL_TILES, AKURE_INITIAL_TILES, ANIMATION_DURATION } from './modules/constants.js';
 
 export class Game {
   constructor() {
@@ -23,6 +25,7 @@ export class Game {
       
       UIService.setElements(this.elements);
       StatisticsService.setElements(this.elements);
+      LevelEditor.init(this.elements, this);
 
       this.eventHandler.setupEventListeners();
       this.createGrid();
@@ -40,15 +43,24 @@ export class Game {
    */
   cacheElements() {
     const elementIds = [
-      'gameContainer', 'settingsContainer', 'statisticsContainer', 'score', 'moves',
-      'restartBtn', 'undoBtn', 'toggleDataValue', 'themeToggleBtn', 'saveSettingsBtn',
+      'gameContainer', 'settingsContainer', 'statisticsContainer', 'editorContainer',
+      'score', 'moves', 'restartBtn', 'undoBtn', 'toggleDataValue', 'themeToggleBtn', 'saveSettingsBtn',
       'statisticsBtn', 'backFromStatisticsBtn', 'recordMoves', 'recordScore',
       'totalMoves', 'totalScore', 'gamesList', 'clearStatisticsBtn',
-      'gameOverPopup', 'questFailPopup', 'tryAgainBtn', 'tryAnotherBtn', 'tryAnotherInfinityBtn', 'gameModeToggleBtn',
+      'editorBtn', 'backFromEditorBtn', 'editorCanvas', 'editorLevelName', 'editorModeBadge',
+      'editorDslOutput', 'editorTabInitial', 'editorTabWin', 'editorSaveBtn', 'editorPlayBtn',
+      'editorImportDslBtn', 'editorCopyDslBtn', 'editorClearBtn', 'editorSavedLevelsList',
+      'modeCarouselPrevBtn', 'modeCarouselNextBtn', 'modeCarouselTitle', 'modeCarouselBadge', 'modeCarouselDesc',
+      'burgerMenuBtn', 'burgerMenuOverlay', 'burgerMenuBackdrop', 'closeBurgerMenuBtn',
+      'menuSettingsBtn', 'menuStatsBtn', 'menuEditorBtn',
+      'gameOverPopup', 'questFailPopup', 'tryAgainBtn', 'tryAnotherBtn', 'tryAnotherInfinityBtn',
       'questWinPopup', 'winMoves', 'winScore', 'nextQuestLevelBtn',
-      'infinityScoreDisplay', 'questScoreDisplay', 'levelMoves', 'totalMovesDisplay',
-      'levelScore', 'totalScoreDisplay', 'game', 'scoreContainer',
-      'settingsBtn', 'cancelSettingsBtn'
+      'akureWinPopup', 'akureWinMoves', 'akureWinScore', 'nextAkureLevelBtn',
+      'akureFailPopup', 'tryAgainAkureBtn', 'tryAnotherAkureBtn',
+      'infinityScoreDisplay', 'questScoreDisplay', 'akureScoreDisplay',
+      'levelMoves', 'totalMovesDisplay', 'levelScore', 'totalScoreDisplay',
+      'akureFilled', 'akureLevelMoves', 'akureLevelScore', 'akureLevelBadge',
+      'game', 'scoreContainer', 'settingsBtn', 'cancelSettingsBtn'
     ];
     
     for (const id of elementIds) {
@@ -64,7 +76,7 @@ export class Game {
     StateManager.initializeState({
       game: {
         size: loadedState.size || DEFAULT_SIZE,
-        selectedSize: loadedState.selectedSize || DEFAULT_SIZE,
+        selectedSize: loadedState.size || DEFAULT_SIZE,
         grid: [],
         history: [],
         score: 0,
@@ -78,6 +90,10 @@ export class Game {
         touchStartX: null,
         touchStartY: null,
         initialGrid: [],
+        cellTypes: [],
+        lockedCells: [],
+        winConditionGrid: null,
+        customLevelName: null,
       },
       ui: {
         theme: loadedState.theme || 'dark',
@@ -92,7 +108,7 @@ export class Game {
    * Creates and initializes game grid.
    */
   createGrid() {
-    const { size } = StateManager.getGameState();
+    const { size, cellTypes } = StateManager.getGameState();
     const { gameMode } = StateManager.getUIState();
     const gameField = this.elements.game;
     if (!gameField) return;
@@ -109,6 +125,13 @@ export class Game {
         const cell = document.createElement('div');
         cell.className = 'cell';
         cell.id = `cell-${r}-${c}`;
+        
+        if (cellTypes && cellTypes[r]?.[c] === 'inactive') {
+          cell.classList.add('cell-inactive');
+        } else if (cellTypes && cellTypes[r]?.[c] === 'medium') {
+          cell.classList.add('cell-medium');
+        }
+
         gameField.appendChild(cell);
         cellMatrix[r][c] = cell;
       }
@@ -117,8 +140,8 @@ export class Game {
 
     this.placeInitialTiles();
     
-    // Save initial grid for Quest mode "Try Again" functionality
-    if (gameMode === 'quest') {
+    // Save initial grid for Quest / Akure mode "Try Again" functionality
+    if (gameMode === 'quest' || gameMode === 'akure') {
       StateManager.setState((prevState) => ({
         initialGrid: GridService.cloneGrid(prevState.grid)
       }));
@@ -126,18 +149,50 @@ export class Game {
   }
 
   /**
-   * Places initial tiles on the grid.
+   * Places initial tiles on the grid based on mode or custom layout.
    */
   placeInitialTiles() {
-    const { size } = StateManager.getGameState();
-    const positions = [];
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) {
-        positions.push([r, c]);
-      }
-    }
+    const { size, cellTypes, customLevelName, akureModeType, akureQuestLevel } = StateManager.getGameState();
+    const { gameMode } = StateManager.getUIState();
     
-    // Shuffle positions for random placement
+    if (gameMode === 'akure') {
+      if (customLevelName) return;
+
+      const currentQuestLvl = StorageService.getAkureQuestLevel() || akureQuestLevel || 1;
+      const levelData = akureModeType === 'quest'
+        ? AkureLevelGenerator.getLevel(currentQuestLvl)
+        : AkureLevelGenerator.generateRandomLevel(size, cellTypes);
+
+      const lvlSize = levelData.size || size;
+      const lvlCellTypes = levelData.cellTypes || GridService.createEmptyGrid(lvlSize, 'active');
+      const newGrid = GridService.createEmptyGrid(lvlSize);
+
+      if (Array.isArray(levelData.initialTiles)) {
+        for (const tile of levelData.initialTiles) {
+          if (GridService.isValidPosition(tile.row, tile.col, lvlSize, lvlCellTypes)) {
+            newGrid[tile.row][tile.col] = tile.value;
+          }
+        }
+      }
+
+      StateManager.setState({
+        size: lvlSize,
+        cellTypes: lvlCellTypes,
+        akureMaxMoves: levelData.maxMoves || null,
+        akureQuestLevel: currentQuestLvl,
+        grid: newGrid,
+        initialGrid: GridService.cloneGrid(newGrid),
+        levelMoves: 0,
+        levelScore: 0,
+        history: [],
+      });
+      return;
+    }
+
+    const playablePositions = GridService.getAllPlayableCells(size, cellTypes);
+    
+    // Shuffle playable positions for random placement
+    const positions = [...playablePositions];
     for (let i = positions.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [positions[i], positions[j]] = [positions[j], positions[i]];
@@ -153,16 +208,49 @@ export class Game {
           newGrid[r][c] = initialTiles[index];
         }
       }
-      return { grid: newGrid };
+      return { 
+        grid: newGrid,
+        initialGrid: GridService.cloneGrid(newGrid)
+      };
     });
   }
 
-  // --- Animation coordination (moved from GameLogic) ---
-
   /**
-   * Plays split animations for the given actions.
-   * @param {Array} splitActions - Split metadata from GameCore.
+   * Loads and starts playing a custom-designed level from the Level Editor.
+   * @param {Object} levelData
    */
+  loadAndPlayCustomLevel(levelData) {
+    const { size, mode, cellTypes, initialGrid, lockedCells, winConditionGrid, name } = levelData;
+
+    StateManager.setState({
+      size,
+      selectedSize: size,
+      gameMode: mode,
+      cellTypes: cellTypes.map(row => [...row]),
+      lockedCells: [...lockedCells],
+      winConditionGrid: winConditionGrid ? winConditionGrid.map(row => [...row]) : null,
+      customLevelName: name,
+      moves: 0,
+      score: 0,
+      levelMoves: 0,
+      totalMoves: 0,
+      levelScore: 0,
+      totalScore: 0,
+      history: [],
+      isProcessing: false,
+      grid: GridService.cloneGrid(initialGrid),
+      initialGrid: GridService.cloneGrid(initialGrid),
+    });
+
+    this.createGrid();
+    // Directly place custom initial grid
+    StateManager.setState({ grid: GridService.cloneGrid(initialGrid) });
+    UIService.hideEditor();
+    UIService.render(StateManager.getState());
+  }
+
+  // --- Animation coordination ---
+
   _animateSplitActions(splitActions) {
     if (!splitActions || splitActions.length === 0) return;
     for (const action of splitActions) {
@@ -183,43 +271,65 @@ export class Game {
   }
 
   /**
-   * Schedules disappearing cell animations and delegates state update to GameLogic.
-   * @param {Array} disappearingCells - Cells that should disappear.
+   * Coordinates animations sequentially:
+   * 1. Split animations run immediately (duration: ANIMATION_DURATION)
+   * 2. Disappearing animations run (duration: ANIMATION_DURATION)
+   * 3. Appearing animation runs strictly AFTER disappearing completes
+   * @param {Array<{row: number, col: number}>} disappearingCells
+   * @param {Object|undefined} spawnedCell
    */
-  _handleDisappearingCells(disappearingCells) {
-    if (!disappearingCells || disappearingCells.length === 0) {
-      GameLogic.processDisappearingCells(disappearingCells);
-      return;
-    }
+  _handleMoveAnimations(disappearingCells, spawnedCell) {
+    const hasDisappearing = disappearingCells && disappearingCells.length > 0;
 
-    setTimeout(() => {
-      // Animate removal
-      for (const { row, col } of disappearingCells) {
-        AnimationService.animateAndRemoveCell(row, col, this.elements);
-      }
-      // Delegate state update to GameLogic
+    if (hasDisappearing) {
+      // Step 2: Start disappearing animation after split completes
+      setTimeout(() => {
+        for (const { row, col } of disappearingCells) {
+          AnimationService.animateAndRemoveCell(row, col, this.elements);
+        }
+        // State update when disappearing cells are cleared
+        GameLogic.processDisappearingCells(disappearingCells);
+
+        // Step 3: Appearing starts strictly AFTER disappearing has finished
+        setTimeout(() => {
+          if (spawnedCell) {
+            GameLogic.applySpawnedCell(spawnedCell);
+            this._animateRandomCell(spawnedCell);
+          }
+        }, ANIMATION_DURATION);
+      }, ANIMATION_DURATION * 2);
+    } else {
+      // No disappearing cells: update status immediately
       GameLogic.processDisappearingCells(disappearingCells);
-    }, ANIMATION_DURATION * 2); // Slightly longer than animation duration to ensure completion
+
+      // Step 3: Appearing starts after split animation completes
+      setTimeout(() => {
+        if (spawnedCell) {
+          GameLogic.applySpawnedCell(spawnedCell);
+          this._animateRandomCell(spawnedCell);
+        }
+      }, ANIMATION_DURATION);
+    }
   }
 
-    /**
-   * Plays appearing animation for a newly spawned random cell.
-   * @param {Object|undefined} spawnedCell - Spawned cell info.
-   */
   _animateRandomCell(spawnedCell) {
     if (!spawnedCell) return;
     const { row, col } = spawnedCell.position;
+    const { showValues } = StateManager.getUIState();
     const cellElement = this.elements.cells?.[row]?.[col]
       || document.getElementById(`cell-${row}-${col}`);
     if (cellElement) {
+      cellElement.classList.remove('cell-null');
+      cellElement.dataset.value = String(spawnedCell.value ?? '');
+      if (showValues) {
+        cellElement.textContent = spawnedCell.value ? String(Math.log2(spawnedCell.value) - 1) : '';
+      } else {
+        cellElement.textContent = '';
+      }
       AnimationService.animateCellAppearing(cellElement);
     }
   }
 
-  /**
-   * Interprets an intent returned by GameLogic.
-   * @param {{ action: string } | null} intent
-   */
   _handleIntent(intent) {
     if (intent && intent.action === 'PLACE_INITIAL_TILES') {
       this.placeInitialTiles();
@@ -231,10 +341,8 @@ export class Game {
   handleMove(direction) {
     const result = GameLogic.move(direction, this.elements);
     if (!result) return;
-    // Coordinate animations
     this._animateSplitActions(result.effects.splitActions);
-    this._animateRandomCell(result.effects.spawnedCell);
-    this._handleDisappearingCells(result.effects.disappearingCells);
+    this._handleMoveAnimations(result.effects.disappearingCells, result.effects.spawnedCell);
   }
 
   handleRestart() {
@@ -249,13 +357,13 @@ export class Game {
     const { game, ui } = StateManager.getState();
     const { size, selectedSize } = game;
     const { gameMode } = ui;
-    const newGameModeSetting = this.elements.gameModeToggleBtn.checked ? 'quest' : 'infinity';
+    const newGameMode = UIService.getCurrentCarouselMode();
 
-    if (size !== selectedSize || gameMode !== newGameModeSetting) {
+    if (size !== selectedSize || gameMode !== newGameMode) {
       GameLogic.saveCurrentGameStats(StateManager.getState());
       StateManager.setState({ 
         size: selectedSize, 
-        gameMode: newGameModeSetting,
+        gameMode: newGameMode,
         moves: 0,
         score: 0,
         levelMoves: 0,
@@ -265,6 +373,10 @@ export class Game {
         history: [],
         isProcessing: false,
         initialGrid: [],
+        cellTypes: [],
+        lockedCells: [],
+        winConditionGrid: null,
+        customLevelName: null,
       });
       this.createGrid();
     }
@@ -286,6 +398,20 @@ export class Game {
     StatisticsService.clearStatistics();
   }
 
+  handleShowEditor() {
+    UIService.showEditor();
+    LevelEditor.render();
+  }
+
+  handleHideEditor() {
+    UIService.hideEditor();
+  }
+
+  handleCarouselStep(direction) {
+    const newMode = UIService.stepCarousel(direction);
+    LevelEditor.setMode(newMode === 'akure' ? 'akure' : 'quest');
+  }
+
   handleTryAgainQuestMode() {
     this._handleIntent(GameLogic.tryAgainQuestMode());
   }
@@ -296,6 +422,18 @@ export class Game {
 
   handleNextQuestLevel() {
     this._handleIntent(GameLogic.startNextQuestLevel());
+  }
+
+  handleTryAgainAkureMode() {
+    this._handleIntent(GameLogic.tryAgainAkureMode());
+  }
+
+  handleTryAnotherAkureMode() {
+    this._handleIntent(GameLogic.tryAnotherAkureMode());
+  }
+
+  handleNextAkureLevel() {
+    this._handleIntent(GameLogic.startNextAkureLevel());
   }
 
   handleShowSettings() {
@@ -316,12 +454,9 @@ export class Game {
     StorageService.saveState();
   }
 
-  handleGameModeToggle(checked) {
-    // Game mode is applied in handleSaveSettings, this just updates the UI switch state
-  }
-
   handleSizeSelection(newSize) {
     StateManager.setState({ selectedSize: newSize });
     UIService.highlightCurrentSize(newSize);
   }
 }
+

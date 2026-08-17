@@ -153,9 +153,51 @@ export const StorageService = (() => {
 
     loadedState.theme = savedTheme === 'light' ? 'light' : 'dark';
     loadedState.showValues = showValues !== 'false';
-    loadedState.gameMode = savedGameMode === 'quest' ? 'quest' : 'infinity';
+    loadedState.gameMode = ['quest', 'akure', 'infinity'].includes(savedGameMode) ? savedGameMode : 'infinity';
 
     return loadedState;
+  };
+
+  const CUSTOM_LEVELS_KEY = 'customLevelsStore';
+
+  /**
+   * Loads all custom user-designed levels.
+   * @returns {Array<Object>}
+   */
+  const loadCustomLevels = () => {
+    const raw = safeGetItem(CUSTOM_LEVELS_KEY);
+    return parseJSON(raw, []);
+  };
+
+  /**
+   * Saves or updates a custom level.
+   * @param {Object} level - Level object with id, name, size, mode, layout, initialTiles, winCondition.
+   */
+  const saveCustomLevel = (level) => {
+    const levels = loadCustomLevels();
+    const existingIndex = levels.findIndex(l => l.id === level.id);
+    const enriched = {
+      ...level,
+      id: level.id || `lvl_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      updatedAt: new Date().toISOString()
+    };
+    if (existingIndex >= 0) {
+      levels[existingIndex] = enriched;
+    } else {
+      levels.unshift(enriched);
+    }
+    safeSetItem(CUSTOM_LEVELS_KEY, JSON.stringify(levels));
+    return enriched;
+  };
+
+  /**
+   * Deletes a custom level by ID.
+   * @param {string} id
+   */
+  const deleteCustomLevel = (id) => {
+    const levels = loadCustomLevels().filter(l => l.id !== id);
+    safeSetItem(CUSTOM_LEVELS_KEY, JSON.stringify(levels));
+    return levels;
   };
 
   /**
@@ -208,9 +250,6 @@ export const StorageService = (() => {
   const migrateIfNeeded = () => {
     const store = loadStatsStore();
     if (!store.version || store.version < STATS_SCHEMA_VERSION) {
-      // Future migrations go here, keyed by version number.
-      // Example:
-      // if (store.version < 2) { /* migrate v1 → v2 */ }
       const migrated = {
         ...store,
         version: STATS_SCHEMA_VERSION,
@@ -223,6 +262,17 @@ export const StorageService = (() => {
     }
   };
 
+  const AKURE_QUEST_LEVEL_KEY = 'akureQuestLevel';
+
+  const getAkureQuestLevel = () => {
+    const raw = safeGetItem(AKURE_QUEST_LEVEL_KEY);
+    return raw ? parseInt(raw, 10) : 1;
+  };
+
+  const setAkureQuestLevel = (level) => {
+    safeSetItem(AKURE_QUEST_LEVEL_KEY, String(level));
+  };
+
   return {
     saveState,
     loadState,
@@ -230,6 +280,12 @@ export const StorageService = (() => {
     loadAllGamesStats,
     clearAllGamesStats,
     getStatsStore,
-    migrateIfNeeded
+    migrateIfNeeded,
+    loadCustomLevels,
+    saveCustomLevel,
+    deleteCustomLevel,
+    getAkureQuestLevel,
+    setAkureQuestLevel,
   };
 })();
+

@@ -27,27 +27,41 @@ export const GridService = (() => {
    * @param {number} size
    * @returns {boolean}
    */
-  const isValidPosition = (row, col, size) => {
-    return Number.isInteger(row) && Number.isInteger(col) &&
-           row >= 0 && row < size && 
-           col >= 0 && col < size;
+  /**
+   * Checks whether a grid position is valid and playable (not inactive void).
+   * @param {number} row
+   * @param {number} col
+   * @param {number} size
+   * @param {Array<Array<string>>} [cellTypes]
+   * @returns {boolean}
+   */
+  const isValidPosition = (row, col, size, cellTypes = null) => {
+    const inBounds = Number.isInteger(row) && Number.isInteger(col) &&
+                     row >= 0 && row < size && 
+                     col >= 0 && col < size;
+    if (!inBounds) return false;
+    if (cellTypes && cellTypes[row] && cellTypes[row][col] === 'inactive') {
+      return false;
+    }
+    return true;
   };
 
   /**
-   * Finds new position after movement in direction.
+   * Finds new position after movement in direction, stopping before obstacles and inactive void cells.
    * @param {Array<Array<number|null>>} grid
    * @param {number} size
    * @param {number} row - Starting row.
    * @param {number} col - Starting column.
    * @param {number} deltaRow - Row movement delta.
    * @param {number} deltaCol - Column movement delta.
+   * @param {Array<Array<string>>} [cellTypes]
    * @returns {[number, number]} New position.
    */
-  const findNewPosition = (grid, size, row, col, deltaRow, deltaCol) => {
+  const findNewPosition = (grid, size, row, col, deltaRow, deltaCol, cellTypes = null) => {
     let newRow = row + deltaRow;
     let newCol = col + deltaCol;
     
-    while (isValidPosition(newRow, newCol, size) && 
+    while (isValidPosition(newRow, newCol, size, cellTypes) && 
            grid[newRow][newCol] === null) {
       row = newRow;
       col = newCol;
@@ -59,37 +73,48 @@ export const GridService = (() => {
   };
 
   /**
-   * Gets random empty cell position.
-   * @param {Array<Array<number|null>>} grid
+   * Gets all playable (non-inactive) cell positions.
    * @param {number} size
-   * @returns {[number, number]|null} Random empty position or null.
+   * @param {Array<Array<string>>} [cellTypes]
+   * @returns {Array<[number, number]>}
    */
-  const getRandomEmptyCell = (grid, size) => {
-    const emptyCells = [];
-    
+  const getAllPlayableCells = (size, cellTypes = null) => {
+    const playable = [];
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
-        if (grid[r][c] === null) {
-          emptyCells.push([r, c]);
+        if (!cellTypes || cellTypes[r]?.[c] !== 'inactive') {
+          playable.push([r, c]);
         }
       }
     }
-    
+    return playable;
+  };
+
+  /**
+   * Gets random empty cell position.
+   * @param {Array<Array<number|null>>} grid
+   * @param {number} size
+   * @param {Array<Array<string>>} [cellTypes]
+   * @returns {[number, number]|null} Random empty position or null.
+   */
+  const getRandomEmptyCell = (grid, size, cellTypes = null) => {
+    const emptyCells = getAllEmptyCells(grid, size, cellTypes);
     return emptyCells.length > 0 ? 
       emptyCells[Math.floor(Math.random() * emptyCells.length)] : null;
   };
 
   /**
-   * Gets all empty cell positions.
+   * Gets all empty cell positions on playable tiles.
    * @param {Array<Array<number|null>>} grid
    * @param {number} size
+   * @param {Array<Array<string>>} [cellTypes]
    * @returns {Array<[number, number]>} Array of empty positions.
    */
-  const getAllEmptyCells = (grid, size) => {
+  const getAllEmptyCells = (grid, size, cellTypes = null) => {
     const emptyCells = [];
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
-        if (grid[r][c] === null) {
+        if ((!cellTypes || cellTypes[r]?.[c] !== 'inactive') && grid[r]?.[c] === null) {
           emptyCells.push([r, c]);
         }
       }
@@ -104,7 +129,7 @@ export const GridService = (() => {
    */
   const calculateGridSum = (grid) => {
     return grid.flat()
-      .filter(val => val !== null)
+      .filter(val => val !== null && typeof val === 'number' && val > 0)
       .reduce((sum, val) => sum + val, 0);
   };
 
@@ -128,12 +153,40 @@ export const GridService = (() => {
     return true;
   };
 
+  /**
+   * Gets all empty cell positions for Infinity mode, accounting for cells that will disappear.
+   * Combines currently empty cells (null) with cells designated to disappear.
+   * @param {Array<Array<number|null>>} grid - Current grid.
+   * @param {number} size - Grid size.
+   * @param {Array<{row: number, col: number}>} [disappearingCells=[]] - Cells scheduled to disappear.
+   * @param {Array<Array<string>>} [cellTypes]
+   * @returns {Array<[number, number]>} Array of empty and disappearing positions.
+   */
+  const getAllEmptyCellsInfinity = (grid, size, disappearingCells = [], cellTypes = null) => {
+    const emptyCells = [];
+    const disappearingSet = new Set(
+      disappearingCells.map(c => `${c.row},${c.col}`)
+    );
+
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (cellTypes && cellTypes[r]?.[c] === 'inactive') continue;
+        if (grid[r]?.[c] === null || disappearingSet.has(`${r},${c}`)) {
+          emptyCells.push([r, c]);
+        }
+      }
+    }
+    return emptyCells;
+  };
+
   return {
     createEmptyGrid,
     cloneGrid,
     findNewPosition,
     getRandomEmptyCell,
     getAllEmptyCells,
+    getAllPlayableCells,
+    getAllEmptyCellsInfinity,
     calculateGridSum,
     areGridsIdentical,
     isValidPosition,

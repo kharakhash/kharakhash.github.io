@@ -153,18 +153,26 @@ export const AnimationService = (() => {
    * Animates cell removal with disappearing effect.
    * @param {number} row - Cell row.
    * @param {number} col - Cell column.
+   * @param {Object} elements - Cached DOM elements.
    */
   const animateAndRemoveCell = (row, col, elements) => {
     const cell = _getCellElement(elements, row, col);
     if (!cell) return;
     
     cell.classList.add('disappearing');
-    cell.addEventListener('animationend', function handler() {
+    let cleaned = false;
+    const handleEnd = () => {
+      if (cleaned) return;
+      cleaned = true;
       cell.classList.remove('disappearing');
-      cell.textContent = '';
       cell.dataset.value = '';
-      cell.removeEventListener('animationend', handler);
-    });
+      cell.textContent = '';
+      cell.removeEventListener('animationend', handleEnd);
+    };
+
+    cell.addEventListener('animationend', handleEnd);
+    // Fallback timer in case animationend is skipped
+    setTimeout(handleEnd, ANIMATION_DURATION);
   };
 
   /**
@@ -174,8 +182,10 @@ export const AnimationService = (() => {
   const animateCellAppearing = (cell) => {
     if (!cell) return;
     
+    cell.classList.remove('appearing');
+    void cell.offsetWidth; // Force CSS reflow
     cell.classList.add('appearing');
-    setTimeout(() => cell.classList.remove('appearing'), ANIMATION_DURATION * 3);
+    setTimeout(() => cell.classList.remove('appearing'), ANIMATION_DURATION);
   };
 
   return {

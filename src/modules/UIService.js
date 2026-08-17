@@ -1,7 +1,7 @@
 import { StateManager } from './StateManager.js';
 import { PerformanceUtils } from './PerformanceUtils.js';
 import { ErrorHandler } from './ErrorHandling.js';
-import { ANIMATION_DURATION } from './constants.js';
+import { ANIMATION_DURATION, MODES, MODE_INFO } from './constants.js';
 
 /**
  * UIService - Manages all user interface rendering and updates based on game state.
@@ -10,8 +10,7 @@ export const UIService = (() => {
   let _elements = {}; // Private variable to store cached DOM elements
   let _lastGrid = null;
   let _lastShowValues = null;
-
-
+  let _currentCarouselIndex = 0;
 
   /**
    * Sets the cached DOM elements for the UIService to use.
@@ -50,63 +49,104 @@ export const UIService = (() => {
 
   /**
    * Renders the grid state to DOM.
+   * Directly synchronizes state to DOM elements to prevent stale cache desync.
    * @param {Object} state - The current game state.
    */
   const renderGrid = (state) => {
-    const { grid, size, showValues } = state;
+    const { grid, size, showValues, cellTypes, lockedCells } = state;
     if (!_elements.game) return;
 
-    if (!_lastGrid || _lastGrid.length !== size) {
-      _lastGrid = Array.from({ length: size }, () => Array(size).fill(undefined));
-    }
-    const showValuesChanged = _lastShowValues !== showValues;
     const cells = _elements.cells;
+    const lockedSet = new Set(
+      Array.isArray(lockedCells) 
+        ? lockedCells.map(c => `${c.row},${c.col}`)
+        : (lockedCells instanceof Set ? Array.from(lockedCells) : [])
+    );
 
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
-        const val = grid[r][c];
-        const prevVal = _lastGrid[r][c];
-
-        if (!showValuesChanged && prevVal === val) {
-          continue;
-        }
-
+        const val = grid?.[r]?.[c];
         const cell = cells?.[r]?.[c] || document.getElementById(`cell-${r}-${c}`);
         if (!cell) continue;
 
-        if (prevVal !== val) {
-          cell.dataset.value = val ?? '';
-          _lastGrid[r][c] = val;
+        const type = cellTypes?.[r]?.[c] || 'active';
+        cell.classList.toggle('cell-inactive', type === 'inactive');
+        cell.classList.toggle('cell-medium', type === 'medium');
+        
+        const isLocked = lockedSet.has(`${r},${c}`);
+        cell.classList.toggle('cell-locked', isLocked);
+
+        if (cell.classList.contains('disappearing')) continue;
+
+        if (type === 'inactive') {
+          cell.dataset.value = '';
+          cell.textContent = '';
+          continue;
         }
 
-        const nextText = showValues ? (val ? (Math.log2(val) - 1) : '') : '';
-        if (cell.textContent !== String(nextText)) {
+        const expectedDataValue = val !== null && val !== undefined ? String(val) : '';
+        if (cell.dataset.value !== expectedDataValue) {
+          cell.dataset.value = expectedDataValue;
+        }
+
+        const nextText = showValues ? (val ? String(Math.log2(val) - 1) : '') : '';
+        if (cell.textContent !== nextText) {
           cell.textContent = nextText;
         }
       }
     }
-    _lastShowValues = showValues;
   };
 
   /**
-   * Updates score and moves display.
+   * Updates score and moves display across all 3 game modes.
    * @param {Object} state - The current game state.
    */
   const updateScoreAndMoves = (state) => {
-    const { gameMode, moves, score, levelMoves, totalMoves, levelScore, totalScore } = state;
+    const { gameMode, moves, score, levelMoves, totalMoves, levelScore, totalScore, grid, size, cellTypes } = state;
+
+    _elements.infinityScoreDisplay?.classList.add('hidden');
+    _elements.questScoreDisplay?.classList.add('hidden');
+    _elements.akureScoreDisplay?.classList.add('hidden');
 
     if (gameMode === 'infinity') {
       _elements.infinityScoreDisplay?.classList.remove('hidden');
-      _elements.questScoreDisplay?.classList.add('hidden');
       if (_elements.moves) _elements.moves.textContent = moves;
       if (_elements.score) _elements.score.textContent = score;
-    } else { // quest mode
-      _elements.infinityScoreDisplay?.classList.add('hidden');
+    } else if (gameMode === 'quest') {
       _elements.questScoreDisplay?.classList.remove('hidden');
       if (_elements.levelMoves) _elements.levelMoves.textContent = levelMoves;
       if (_elements.totalMovesDisplay) _elements.totalMovesDisplay.textContent = totalMoves;
       if (_elements.levelScore) _elements.levelScore.textContent = levelScore;
       if (_elements.totalScoreDisplay) _elements.totalScoreDisplay.textContent = totalScore;
+    } else if (gameMode === 'akure') {
+      _elements.akureScoreDisplay?.classList.remove('hidden');
+      
+      // Calculate filled / total playable slots
+      let totalPlayable = 0;
+      let filledCount = 0;
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (!cellTypes || cellTypes[r]?.[c] !== 'inactive') {
+            totalPlayable++;
+            if (grid?.[r]?.[c] !== null && grid?.[r]?.[c] !== undefined && grid[r][c] > 0) {
+              filledCount++;
+            }
+          }
+        }
+      }
+      
+      if (_elements.akureFilled) _elements.akureFilled.textContent = `${filledCount}/${totalPlayable}`;
+      if (_elements.akureLevelMoves) {
+        _elements.akureLevelMoves.textContent = state.akureMaxMoves 
+          ? `${levelMoves}/${state.akureMaxMoves}` 
+          : `${levelMoves}`;
+      }
+      if (_elements.akureLevelBadge) {
+        _elements.akureLevelBadge.textContent = state.akureModeType === 'quest'
+          ? `Lvl ${state.akureQuestLevel || 1}`
+          : 'Random';
+      }
+      if (_elements.akureLevelScore) _elements.akureLevelScore.textContent = levelScore;
     }
   };
 
@@ -129,7 +169,7 @@ export const UIService = (() => {
       if (popup.parentNode) {
         popup.parentNode.removeChild(popup);
       }
-    }, ANIMATION_DURATION * 3);
+    }, ANIMATION_DURATION * 4);
   };
 
   /**
@@ -143,11 +183,51 @@ export const UIService = (() => {
     if (_elements.toggleDataValue) {
       _elements.toggleDataValue.checked = state.showValues;
     }
-    if (_elements.gameModeToggleBtn) {
-      _elements.gameModeToggleBtn.checked = state.gameMode === 'quest';
-    }
+    
+    updateCarouselUI(state.gameMode);
+
     const preferredSize = typeof state.selectedSize === 'number' ? state.selectedSize : state.size;
     highlightCurrentSize(preferredSize);
+  };
+
+  /**
+   * Updates the Mode Carousel to display the active mode.
+   * @param {string} currentMode - 'infinity' | 'quest' | 'akure'
+   */
+  const updateCarouselUI = (currentMode) => {
+    const track = document.getElementById('modeCarouselTrack');
+    const title = document.getElementById('modeCarouselTitle');
+    const badge = document.getElementById('modeCarouselBadge');
+    const desc = document.getElementById('modeCarouselDesc');
+    const indicators = document.getElementById('modeCarouselIndicators');
+
+    const index = MODES.indexOf(currentMode);
+    if (index >= 0) {
+      _currentCarouselIndex = index;
+    }
+
+    const modeData = MODE_INFO[currentMode] || MODE_INFO.infinity;
+    if (title) title.textContent = modeData.title;
+    if (badge) badge.textContent = modeData.badge;
+    if (desc) desc.textContent = modeData.desc;
+
+    // Update dot indicators
+    if (indicators) {
+      indicators.querySelectorAll('.mode-dot').forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === _currentCarouselIndex);
+      });
+    }
+  };
+
+  /**
+   * Advances the mode carousel in specified direction (-1 or 1).
+   * @returns {string} New selected mode ID.
+   */
+  const stepCarousel = (direction) => {
+    _currentCarouselIndex = (_currentCarouselIndex + direction + MODES.length) % MODES.length;
+    const newMode = MODES[_currentCarouselIndex];
+    updateCarouselUI(newMode);
+    return newMode;
   };
 
   /**
@@ -185,11 +265,35 @@ export const UIService = (() => {
   };
 
   /**
+   * Shows burger menu overlay.
+   */
+  const showBurgerMenu = () => {
+    toggleSectionVisibility(_elements.burgerMenuOverlay, true);
+  };
+
+  /**
+   * Hides burger menu overlay.
+   */
+  const hideBurgerMenu = () => {
+    toggleSectionVisibility(_elements.burgerMenuOverlay, false);
+  };
+
+  /**
+   * Toggles burger menu overlay.
+   */
+  const toggleBurgerMenu = () => {
+    const isHidden = !_elements.burgerMenuOverlay || _elements.burgerMenuOverlay.classList.contains('hidden');
+    toggleSectionVisibility(_elements.burgerMenuOverlay, isHidden);
+  };
+
+  /**
    * Shows settings overlay.
    */
   const showSettings = () => {
+    hideBurgerMenu();
     toggleSectionVisibility(_elements.gameContainer, false);
     toggleSectionVisibility(_elements.settingsContainer, true);
+    toggleSectionVisibility(_elements.editorContainer, false);
   };
 
   /**
@@ -202,12 +306,33 @@ export const UIService = (() => {
   };
 
   /**
+   * Shows Level Editor container.
+   */
+  const showEditor = () => {
+    hideBurgerMenu();
+    toggleSectionVisibility(_elements.gameContainer, false);
+    toggleSectionVisibility(_elements.settingsContainer, false);
+    toggleSectionVisibility(_elements.statisticsContainer, false);
+    toggleSectionVisibility(_elements.editorContainer, true);
+  };
+
+  /**
+   * Hides Level Editor container.
+   */
+  const hideEditor = () => {
+    toggleSectionVisibility(_elements.editorContainer, false);
+    toggleSectionVisibility(_elements.gameContainer, true);
+  };
+
+  /**
    * Shows statistics overlay and renders statistics.
    */
   const showStatistics = () => {
+    hideBurgerMenu();
     toggleSectionVisibility(_elements.gameContainer, false);
     toggleSectionVisibility(_elements.settingsContainer, false);
     toggleSectionVisibility(_elements.statisticsContainer, true);
+    toggleSectionVisibility(_elements.editorContainer, false);
     StateManager.setState({ isOverlayActive: true });
     // StatisticsService.renderStatistics() will be called by EventHandler
   };
@@ -221,6 +346,7 @@ export const UIService = (() => {
     StateManager.setState({ isOverlayActive: false });
     hideGameOverPopup(); // Ensure popup is hidden
     hideQuestFailPopup();
+    hideAkureFailPopup();
   };
 
   /**
@@ -285,16 +411,62 @@ export const UIService = (() => {
     }
   };
 
+  /**
+   * Hides Akure win popup.
+   */
+  const hideAkureWinPopup = () => {
+    toggleSectionVisibility(_elements.akureWinPopup, false);
+  };
+
+  /**
+   * Shows Akure win popup.
+   * @param {number} moves
+   * @param {number} score
+   */
+  const showAkureWinPopup = (moves, score) => {
+    if (_elements.akureWinPopup) {
+      if (_elements.akureWinMoves) _elements.akureWinMoves.textContent = moves;
+      if (_elements.akureWinScore) _elements.akureWinScore.textContent = score;
+      toggleSectionVisibility(_elements.akureWinPopup, true);
+    }
+  };
+
+  /**
+   * Hides Akure fail popup.
+   */
+  const hideAkureFailPopup = () => {
+    toggleSectionVisibility(_elements.akureFailPopup, false);
+  };
+
+  /**
+   * Shows Akure fail popup.
+   * @param {string} message
+   */
+  const showAkureFailPopup = (message) => {
+    if (_elements.akureFailPopup) {
+      const messageNode = _elements.akureFailPopup.querySelector('p');
+      if (messageNode) {
+        messageNode.textContent = message;
+      }
+      toggleSectionVisibility(_elements.akureFailPopup, true);
+    }
+  };
+
   // Subscribe to state changes for automatic re-rendering
-  StateManager.subscribe(PerformanceUtils.debounce(render, ANIMATION_DURATION)); // Debounce render calls
+  StateManager.subscribe(render);
 
   return {
     setElements, // Export the setter for elements
     render, // Export render method
     renderGrid, // Exported for initial grid creation
     showScorePopup,
+    showBurgerMenu,
+    hideBurgerMenu,
+    toggleBurgerMenu,
     showSettings,
     hideSettings,
+    showEditor,
+    hideEditor,
     showStatistics,
     hideStatistics,
     hideGameOverPopup,
@@ -303,7 +475,14 @@ export const UIService = (() => {
     showQuestFailPopup,
     hideQuestWinPopup,
     showQuestWinPopup,
+    showAkureWinPopup,
+    hideAkureWinPopup,
+    showAkureFailPopup,
+    hideAkureFailPopup,
     highlightCurrentSize, // Exported for settings interaction
     updateSettingsUI, // Exported for settings update
+    updateCarouselUI,
+    stepCarousel,
+    getCurrentCarouselMode: () => MODES[_currentCarouselIndex],
   };
 })();

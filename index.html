@@ -8,11 +8,14 @@
 </head>
 <body>
   <main class="app-container">
+    <!-- Main Game Section -->
     <section id="gameContainer" class="game-container">
       <div id="mainButtonsContainer" class="fl-x-row-cow-container">
-        <button id="statisticsBtn">statistics</button>
-        <button id="settingsBtn">settings</button>
+        <button id="statisticsBtn">stats</button>
+        <button id="settingsBtn">options</button>
+        <button id="editorBtn">builder</button>
       </div>
+
       <div id="scoreContainer" class="fl-x-row-cow-container">
         <div id="infinityScoreDisplay" class="score-display">
           <span><strong>Moves</strong><span id="moves">0</span></span>
@@ -24,6 +27,12 @@
           <span><strong>Total moves</strong><span id="totalMovesDisplay">0</span></span>
           <span><strong>Total score</strong><span id="totalScoreDisplay">0</span></span>
         </div>
+        <div id="akureScoreDisplay" class="score-display hidden">
+          <span><strong>Filled</strong><span id="akureFilled">0/0</span></span>
+          <span><strong>Moves</strong><span id="akureLevelMoves">0</span></span>
+          <span id="akureStageBox"><strong>Stage</strong><span id="akureLevelBadge">Lvl 1</span></span>
+          <span><strong>Score</strong><span id="akureLevelScore">0</span></span>
+        </div>
       </div>
       <div id="game"></div>
       <div id="buttonContainer" class="fl-x-row-cow-container">
@@ -31,30 +40,52 @@
         <button id="undoBtn">undo</button>
       </div>
     </section>
+
+    <!-- Settings Section with Mode Carousel -->
     <section id="settingsContainer" class="settings-container hidden">
-      <div id="sizeOptions">
-        <div class="size-square" data-size="3"><span>3x3</span></div>
-        <div class="size-square" data-size="4"><span>4x4</span></div>
-        <div class="size-square" data-size="5"><span>5x5</span></div>
-        <div class="size-square" data-size="7"><span>7x7</span></div>
-        <div class="size-square" data-size="9"><span>9x9</span></div>
-        <div class="size-square" data-size="11"><span>11x11</span></div>
-      </div>
-      <div id="settingsMedium">
-        <div class="switcher">
-          <input type="checkbox" id="themeToggleBtn">
-          <label for="themeToggleBtn" class="slider"></label>
-          <span>switch theme</span>
+      <div class="settings-content">
+        <!-- Mode Carousel -->
+        <div class="mode-carousel-wrapper">
+          <div class="mode-carousel-header">
+            <span class="mode-carousel-label">Game Mode</span>
+            <span id="modeCarouselBadge" class="mode-badge">SURVIVAL</span>
+          </div>
+          <div class="mode-carousel">
+            <button id="modeCarouselPrevBtn" class="carousel-arrow" type="button" aria-label="Previous mode">‹</button>
+            <div class="mode-carousel-card">
+              <h3 id="modeCarouselTitle">Бесконечный</h3>
+              <p id="modeCarouselDesc">Дели плитки, очищай двойки и набирай рекордные очки со спавном новых тайлов.</p>
+            </div>
+            <button id="modeCarouselNextBtn" class="carousel-arrow" type="button" aria-label="Next mode">›</button>
+          </div>
+          <div id="modeCarouselIndicators" class="mode-carousel-indicators">
+            <span class="mode-dot active"></span>
+            <span class="mode-dot"></span>
+            <span class="mode-dot"></span>
+          </div>
         </div>
-        <div class="switcher">
-          <input type="checkbox" id="toggleDataValue" checked="">
-          <label for="toggleDataValue" class="slider"></label>
-          <span>show values</span>
+
+        <div id="sizeOptions">
+          <div class="size-square" data-size="3"><span>3x3</span></div>
+          <div class="size-square" data-size="4"><span>4x4</span></div>
+          <div class="size-square" data-size="5"><span>5x5</span></div>
+          <div class="size-square" data-size="6"><span>6x6</span></div>
+          <div class="size-square" data-size="7"><span>7x7</span></div>
+          <div class="size-square" data-size="8"><span>8x8</span></div>
+          <div class="size-square" data-size="9"><span>9x9</span></div>
+          <div class="size-square" data-size="10"><span>10x10</span></div>
         </div>
-        <div class="switcher">
-          <input type="checkbox" id="gameModeToggleBtn" checked>
-          <label for="gameModeToggleBtn" class="slider"></label>
-          <span>infinity/quest</span>
+        <div id="settingsMedium">
+          <div class="switcher">
+            <input type="checkbox" id="themeToggleBtn">
+            <label for="themeToggleBtn" class="slider"></label>
+            <span>switch theme</span>
+          </div>
+          <div class="switcher">
+            <input type="checkbox" id="toggleDataValue" checked="">
+            <label for="toggleDataValue" class="slider"></label>
+            <span>show values</span>
+          </div>
         </div>
       </div>
       <div id="settingsButtonsContainer" class="fl-x-row-cow-container">
@@ -62,6 +93,93 @@
         <button id="cancelSettingsBtn">back</button>
       </div>
     </section>
+
+    <!-- Level Editor Section -->
+    <section id="editorContainer" class="editor-container hidden">
+      <div class="editor-header">
+        <button id="backFromEditorBtn" class="btn-back-arrow" aria-label="Go back">← Back</button>
+        <div class="editor-meta">
+          <input type="text" id="editorLevelName" value="Custom Level 1" placeholder="Level name" />
+          <span id="editorModeBadge" class="mode-badge">AKURE</span>
+        </div>
+        <div class="editor-size-bar">
+          <span>Size:</span>
+          <button class="editor-size-btn" data-size="3">3x3</button>
+          <button class="editor-size-btn" data-size="4">4x4</button>
+          <button class="editor-size-btn selected" data-size="5">5x5</button>
+          <button class="editor-size-btn" data-size="6">6x6</button>
+          <button class="editor-size-btn" data-size="7">7x7</button>
+        </div>
+      </div>
+
+      <!-- Dual-State Tabs -->
+      <div class="editor-state-tabs">
+        <button id="editorTabInitial" class="editor-tab-btn active">1. Initial State</button>
+        <button id="editorTabWin" class="editor-tab-btn">2. Win Condition</button>
+      </div>
+
+      <!-- Editor Tool Palette -->
+      <div class="editor-toolbar">
+        <div class="toolbar-group">
+          <span class="toolbar-title">Cells:</span>
+          <div class="toolbar-row">
+            <button class="editor-tool-btn active" data-category="cellType" data-val="active">Active</button>
+            <button class="editor-tool-btn" data-category="cellType" data-val="medium">Medium</button>
+            <button class="editor-tool-btn" data-category="cellType" data-val="inactive">Inactive</button>
+          </div>
+        </div>
+        <div class="toolbar-group">
+          <span class="toolbar-title">Numbers / Tiles:</span>
+          <div class="toolbar-row palette-row">
+            <button class="editor-tool-btn palette-tile" data-category="tileValue" data-val="1024" data-value="1024">9</button>
+            <button class="editor-tool-btn palette-tile active" data-category="tileValue" data-val="512" data-value="512">8</button>
+            <button class="editor-tool-btn palette-tile" data-category="tileValue" data-val="256" data-value="256">7</button>
+            <button class="editor-tool-btn palette-tile" data-category="tileValue" data-val="128" data-value="128">6</button>
+            <button class="editor-tool-btn palette-tile" data-category="tileValue" data-val="64" data-value="64">5</button>
+            <button class="editor-tool-btn palette-tile" data-category="tileValue" data-val="32" data-value="32">4</button>
+            <button class="editor-tool-btn palette-tile" data-category="tileValue" data-val="16" data-value="16">3</button>
+            <button class="editor-tool-btn palette-tile" data-category="tileValue" data-val="8" data-value="8">2</button>
+            <button class="editor-tool-btn palette-tile" data-category="tileValue" data-val="4" data-value="4">1</button>
+            <button class="editor-tool-btn palette-tile" data-category="tileValue" data-val="clear">✕</button>
+          </div>
+        </div>
+        <div class="toolbar-group">
+          <span class="toolbar-title">Flags:</span>
+          <div class="toolbar-row">
+            <button class="editor-tool-btn" data-category="lock" data-val="lock">🔒 Lock / Static</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Canvas -->
+      <div id="editorCanvas" class="editor-canvas"></div>
+
+      <!-- Symbolic Language (DSL) & Code Block -->
+      <div class="editor-dsl-section">
+        <div class="editor-dsl-header">
+          <span>Symbolic Level Code (DSL)</span>
+          <div class="dsl-actions">
+            <button id="editorCopyDslBtn" class="btn-xs">Copy DSL</button>
+            <button id="editorImportDslBtn" class="btn-xs">Import</button>
+          </div>
+        </div>
+        <textarea id="editorDslOutput" spellcheck="false" rows="5"></textarea>
+      </div>
+
+      <!-- Saved levels library -->
+      <div class="editor-saved-section">
+        <div class="editor-saved-header">Saved Custom Levels</div>
+        <div id="editorSavedLevelsList" class="editor-saved-list"></div>
+      </div>
+
+      <div class="editor-bottom-bar fl-x-row-cow-container">
+        <button id="editorPlayBtn" class="btn-primary">▶ Play / Test</button>
+        <button id="editorSaveBtn">💾 Save Level</button>
+        <button id="editorClearBtn">Clear Grid</button>
+      </div>
+    </section>
+
+    <!-- Statistics Section -->
     <section id="statisticsContainer" class="statistics-container hidden">
       <div class="statistics-content">
         <div class="stats-summary">
@@ -81,6 +199,8 @@
         <button id="backFromStatisticsBtn">back</button>
       </div>
     </section>
+
+    <!-- Popups -->
     <section id="gameOverPopup" class="popup-container hidden">
       <div class="popup-content">
         <h2>you failed!</h2>
@@ -90,6 +210,7 @@
         </div>
       </div>
     </section>
+
     <section id="questFailPopup" class="popup-container hidden">
       <div class="popup-content">
         <h2>game over!</h2>
@@ -100,6 +221,7 @@
         </div>
       </div>
     </section>
+
     <section id="questWinPopup" class="popup-container hidden">
       <div class="popup-content">
         <h2>quest complete!</h2>
@@ -110,7 +232,30 @@
         </div>
       </div>
     </section>
+
+    <section id="akureWinPopup" class="popup-container hidden">
+      <div class="popup-content">
+        <h2>akure complete!</h2>
+        <p>field filled in <span id="akureWinMoves">0</span> moves!</p>
+        <p>score: <span id="akureWinScore">0</span></p>
+        <div class="popup-buttons">
+          <button id="nextAkureLevelBtn">next level</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="akureFailPopup" class="popup-container hidden">
+      <div class="popup-content">
+        <h2>akure failed!</h2>
+        <p>moves ran out before field was filled!</p>
+        <div class="popup-buttons">
+          <button id="tryAgainAkureBtn">try again</button>
+          <button id="tryAnotherAkureBtn">try another</button>
+        </div>
+      </div>
+    </section>
   </main>
   <script src="script.js" type="module" defer></script>
 </body>
 </html>
+

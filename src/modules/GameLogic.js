@@ -1,4 +1,5 @@
 import { StateManager } from './StateManager.js';
+import { EventBus } from './EventBus.js';
 import { GameValidator } from './GameValidator.js';
 import { GridService } from './GridService.js';
 import { ErrorHandler } from './ErrorHandling.js';
@@ -49,6 +50,8 @@ export const GameLogic = (() => {
         };
       });
 
+      EventBus.emit('game:move', { direction, effects: result.effects });
+
       return {
         effects: result.effects,
       };
@@ -76,9 +79,10 @@ export const GameLogic = (() => {
     let scoreGain = 0;
 
     for (const { row, col } of disappearingCells) {
+      scoreGain += 1;
+      // Clear the cell only if it still holds value 2 (was not replaced by spawned tile)
       if (updatedGrid[row][col] === 2) {
         updatedGrid[row][col] = null;
-        scoreGain += 1;
       }
     }
 
@@ -92,9 +96,30 @@ export const GameLogic = (() => {
     });
 
     if (scoreGain > 0) {
+      console.log(`[GameLogic] 💥 Cleared ${scoreGain} bulb cell(s) (value 2). Score gain: +${scoreGain}`);
+      EventBus.emit('game:score', { scoreGain });
       UIService.showScorePopup(scoreGain);
     }
 
+    checkGameStatus(StateManager.getState());
+  };
+
+  /**
+   * Places the newly spawned tile into state on the computer turn.
+   * @param {Object|undefined} spawnedCell - Spawned cell information.
+   */
+  const applySpawnedCell = (spawnedCell) => {
+    if (!spawnedCell) return;
+    const { position, value } = spawnedCell;
+    const { row, col } = position;
+
+    StateManager.setState((prevState) => {
+      const updatedGrid = GridService.cloneGrid(prevState.grid);
+      updatedGrid[row][col] = value;
+      return { grid: updatedGrid };
+    });
+
+    EventBus.emit('game:spawn', spawnedCell);
     checkGameStatus(StateManager.getState());
   };
 
@@ -130,9 +155,9 @@ export const GameLogic = (() => {
       moves: 0,
       score: 0,
       levelMoves: 0,
-      totalMoves: state.gameMode === 'quest' ? 0 : state.totalMoves,
+      totalMoves: (state.gameMode === 'quest' || state.gameMode === 'akure') ? 0 : state.totalMoves,
       levelScore: 0,
-      totalScore: state.gameMode === 'quest' ? 0 : state.totalScore,
+      totalScore: (state.gameMode === 'quest' || state.gameMode === 'akure') ? 0 : state.totalScore,
       history: [],
       isProcessing: false,
       grid: GridService.createEmptyGrid(state.size),
@@ -141,6 +166,9 @@ export const GameLogic = (() => {
     StateManager.setState(patch);
     UIService.hideGameOverPopup();
     UIService.hideQuestWinPopup();
+    UIService.hideQuestFailPopup();
+    UIService.hideAkureWinPopup();
+    UIService.hideAkureFailPopup();
 
     return { action: 'PLACE_INITIAL_TILES' };
   };
@@ -162,9 +190,9 @@ export const GameLogic = (() => {
       }));
       UIService.hideQuestFailPopup();
       UIService.hideGameOverPopup();
-      return null; // No tile placement needed — grid restored from snapshot
+      return null;
     }
-    return restart(); // Fallback
+    return restart();
   };
 
   /**
@@ -193,6 +221,57 @@ export const GameLogic = (() => {
   };
 
   /**
+   * Restarts game in Akure mode with the same initial grid.
+   * @returns {{ action: string } | null}
+   */
+  const tryAgainAkureMode = () => {
+    const state = StateManager.getState();
+    if (state.gameMode === 'akure' && state.initialGrid.length > 0) {
+      saveCurrentGameStats(state);
+      StateManager.setState((prevState) => ({
+        levelMoves: 0,
+        levelScore: 0,
+        history: [],
+        isProcessing: false,
+        grid: GridService.cloneGrid(prevState.initialGrid),
+      }));
+      UIService.hideAkureFailPopup();
+      UIService.hideGameOverPopup();
+      return null;
+    }
+    return restart();
+  };
+
+  /**
+   * Restarts game in Akure mode with a newly generated grid.
+   * @returns {{ action: string }}
+   */
+  const tryAnotherAkureMode = () => {
+    const result = restart();
+    UIService.hideAkureFailPopup();
+    return result;
+  };
+
+  /**
+   * Starts the next akure level.
+   * @returns {{ action: string }}
+   */
+  const startNextAkureLevel = () => {
+    UIService.hideAkureWinPopup();
+    const currentQuestLvl = StorageService.getAkureQuestLevel() || 1;
+    const nextLevel = currentQuestLvl + 1;
+    StorageService.setAkureQuestLevel(nextLevel);
+    StateManager.setState((prevState) => ({
+      akureQuestLevel: nextLevel,
+      levelMoves: 0,
+      levelScore: 0,
+      history: [],
+      grid: GridService.createEmptyGrid(prevState.size),
+    }));
+    return { action: 'PLACE_INITIAL_TILES' };
+  };
+
+  /**
    * Checks win/lose conditions and delegates mode-specific reactions.
    * @param {Object} state - Current flattened game state.
    */
@@ -209,6 +288,16 @@ export const GameLogic = (() => {
       return;
     }
 
+    if (state.gameMode === 'akure') {
+      const outcome = GameCore.checkAkureOutcome(state);
+      if (outcome === 'win') {
+        modeRules.onWin(state);
+      } else if (outcome === 'lose') {
+        modeRules.onLose(state);
+      }
+      return;
+    }
+
     if (state.gameMode === 'infinity' && !GameCore.canMakeMove(state)) {
       modeRules.onLose(state);
     }
@@ -217,11 +306,15 @@ export const GameLogic = (() => {
   return {
     move,
     processDisappearingCells,
+    applySpawnedCell,
     undo,
     restart,
     tryAgainQuestMode,
     tryAnotherQuestMode,
     startNextQuestLevel,
+    tryAgainAkureMode,
+    tryAnotherAkureMode,
+    startNextAkureLevel,
     checkGameStatus,
     saveCurrentGameStats,
   };

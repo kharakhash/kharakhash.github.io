@@ -1,3 +1,5 @@
+import { EventBus } from './EventBus.js';
+
 /**
  * StateManager - Centralized state management with a Pub/Sub pattern.
  * Separates game state and UI state while keeping subscribers aware of a flattened state.
@@ -7,7 +9,8 @@ export const StateManager = (() => {
     'grid', 'size', 'selectedSize', 'history', 'score', 'moves',
     'levelMoves', 'totalMoves', 'levelScore', 'totalScore',
     'isProcessing', 'lastMoveTime', 'touchStartX', 'touchStartY',
-    'initialGrid'
+    'initialGrid', 'cellTypes', 'lockedCells', 'winConditionGrid',
+    'customLevelName', 'akureMaxMoves', 'akureQuestLevel', 'akureModeType'
   ]);
   const UI_KEYS = new Set(['theme', 'showValues', 'gameMode', 'isOverlayActive']);
 
@@ -26,7 +29,14 @@ export const StateManager = (() => {
     lastMoveTime: 0,
     touchStartX: null,
     touchStartY: null,
-    initialGrid: []
+    initialGrid: [],
+    cellTypes: [],
+    lockedCells: [],
+    winConditionGrid: null,
+    customLevelName: null,
+    akureMaxMoves: null,
+    akureQuestLevel: 1,
+    akureModeType: 'random' // 'random' | 'quest'
   };
 
   const DEFAULT_UI_STATE = {
@@ -121,6 +131,7 @@ export const StateManager = (() => {
   const publish = () => {
     const currentState = getState();
     subscribers.forEach(callback => callback(currentState));
+    EventBus.emit('state:change', currentState);
   };
 
   return {

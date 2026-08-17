@@ -1,4 +1,5 @@
 import { ErrorHandler } from './modules/ErrorHandling.js';
+import { LevelEditor } from './levels-builder/LevelEditor.js';
 import { DIRECTION_DELTAS, SWIPE_THRESHOLD } from './modules/constants.js';
 
 /**
@@ -23,6 +24,7 @@ export class EventHandler {
    * @param {Object} [options] - addEventListener options.
    */
   _addListener(target, event, handler, context, options) {
+    if (!target) return;
     const bound = ErrorHandler.wrap(handler.bind(this), context);
     this._boundHandlers.push({ target, event, bound, options });
     target.addEventListener(event, bound, options);
@@ -37,57 +39,52 @@ export class EventHandler {
     this._addListener(window, 'touchstart', this.handleTouchStart, 'touchstart');
     this._addListener(window, 'touchend', this.handleTouchEnd, 'touchend');
     
-    // Button events
-    if (this.elements.restartBtn) {
-      this._addListener(this.elements.restartBtn, 'click', this.handleRestartClick, 'restartBtn.click');
-    }
-    if (this.elements.undoBtn) {
-      this._addListener(this.elements.undoBtn, 'click', this.handleUndoClick, 'undoBtn.click');
-    }
-    if (this.elements.saveSettingsBtn) {
-      this._addListener(this.elements.saveSettingsBtn, 'click', this.handleSaveSettingsClick, 'saveSettingsBtn.click');
-    }
-    if (this.elements.statisticsBtn) {
-      this._addListener(this.elements.statisticsBtn, 'click', this.handleShowStatisticsClick, 'statisticsBtn.click');
-    }
-    if (this.elements.backFromStatisticsBtn) {
-      this._addListener(this.elements.backFromStatisticsBtn, 'click', this.handleHideStatisticsClick, 'backFromStatisticsBtn.click');
-    }
-    if (this.elements.clearStatisticsBtn) {
-      this._addListener(this.elements.clearStatisticsBtn, 'click', this.handleClearStatisticsClick, 'clearStatisticsBtn.click');
-    }
-    if (this.elements.tryAgainBtn) {
-      this._addListener(this.elements.tryAgainBtn, 'click', this.handleTryAgainClick, 'tryAgainBtn.click');
-    }
-    if (this.elements.tryAnotherBtn) {
-      this._addListener(this.elements.tryAnotherBtn, 'click', this.handleTryAnotherClick, 'tryAnotherBtn.click');
-    }
-    if (this.elements.tryAnotherInfinityBtn) {
-      this._addListener(this.elements.tryAnotherInfinityBtn, 'click', this.handleTryAnotherClick, 'tryAnotherInfinityBtn.click');
-    }
-    if (this.elements.nextQuestLevelBtn) {
-      this._addListener(this.elements.nextQuestLevelBtn, 'click', this.handleNextQuestLevelClick, 'nextQuestLevelBtn.click');
-    }
-    if (this.elements.settingsBtn) {
-      this._addListener(this.elements.settingsBtn, 'click', this.handleShowSettingsClick, 'settingsBtn.click');
-    }
-    if (this.elements.cancelSettingsBtn) {
-      this._addListener(this.elements.cancelSettingsBtn, 'click', this.handleHideSettingsClick, 'cancelSettingsBtn.click');
-    }
+    // Main button events
+    this._addListener(this.elements.restartBtn, 'click', this.handleRestartClick, 'restartBtn.click');
+    this._addListener(this.elements.undoBtn, 'click', this.handleUndoClick, 'undoBtn.click');
+    this._addListener(this.elements.saveSettingsBtn, 'click', this.handleSaveSettingsClick, 'saveSettingsBtn.click');
+    this._addListener(this.elements.statisticsBtn, 'click', this.handleShowStatisticsClick, 'statisticsBtn.click');
+    this._addListener(this.elements.backFromStatisticsBtn, 'click', this.handleHideStatisticsClick, 'backFromStatisticsBtn.click');
+    this._addListener(this.elements.clearStatisticsBtn, 'click', this.handleClearStatisticsClick, 'clearStatisticsBtn.click');
+    this._addListener(this.elements.settingsBtn, 'click', this.handleShowSettingsClick, 'settingsBtn.click');
+    this._addListener(this.elements.cancelSettingsBtn, 'click', this.handleHideSettingsClick, 'cancelSettingsBtn.click');
+
+    // Burger Menu Events
+    this._addListener(this.elements.burgerMenuBtn, 'click', () => UIService.toggleBurgerMenu(), 'burgerMenu.toggle');
+    this._addListener(this.elements.closeBurgerMenuBtn, 'click', () => UIService.hideBurgerMenu(), 'burgerMenu.close');
+    this._addListener(this.elements.burgerMenuBackdrop, 'click', () => UIService.hideBurgerMenu(), 'burgerMenu.backdrop');
+    this._addListener(this.elements.menuSettingsBtn, 'click', this.handleShowSettingsClick, 'menuSettings.click');
+    this._addListener(this.elements.menuStatsBtn, 'click', this.handleShowStatisticsClick, 'menuStats.click');
+    this._addListener(this.elements.menuEditorBtn, 'click', this.handleShowEditorClick, 'menuEditor.click');
+
+    // Level Editor Buttons
+    this._addListener(this.elements.editorBtn, 'click', this.handleShowEditorClick, 'editorBtn.click');
+    this._addListener(this.elements.backFromEditorBtn, 'click', this.handleHideEditorClick, 'backFromEditorBtn.click');
+    
+    // Mode Carousel Buttons
+    this._addListener(this.elements.modeCarouselPrevBtn, 'click', () => this.game.handleCarouselStep(-1), 'carousel.prev');
+    this._addListener(this.elements.modeCarouselNextBtn, 'click', () => this.game.handleCarouselStep(1), 'carousel.next');
+
+    // Quest mode Popups
+    this._addListener(this.elements.tryAgainBtn, 'click', this.handleTryAgainClick, 'tryAgainBtn.click');
+    this._addListener(this.elements.tryAnotherBtn, 'click', this.handleTryAnotherClick, 'tryAnotherBtn.click');
+    this._addListener(this.elements.tryAnotherInfinityBtn, 'click', this.handleTryAnotherClick, 'tryAnotherInfinityBtn.click');
+    this._addListener(this.elements.nextQuestLevelBtn, 'click', this.handleNextQuestLevelClick, 'nextQuestLevelBtn.click');
+
+    // Akure mode Popups
+    this._addListener(this.elements.nextAkureLevelBtn, 'click', this.handleNextAkureLevelClick, 'nextAkureLevelBtn.click');
+    this._addListener(this.elements.tryAgainAkureBtn, 'click', this.handleTryAgainAkureClick, 'tryAgainAkureBtn.click');
+    this._addListener(this.elements.tryAnotherAkureBtn, 'click', this.handleTryAnotherAkureClick, 'tryAnotherAkureBtn.click');
     
     // Theme and value display toggles
-    if (this.elements.themeToggleBtn) {
-      this._addListener(this.elements.themeToggleBtn, 'change', this.handleThemeToggleChange, 'themeToggleBtn.change');
-    }
-    if (this.elements.toggleDataValue) {
-      this._addListener(this.elements.toggleDataValue, 'change', this.handleToggleDataValueChange, 'toggleDataValue.change');
-    }
-    if (this.elements.gameModeToggleBtn) {
-      this._addListener(this.elements.gameModeToggleBtn, 'change', this.handleGameModeToggleChange, 'gameModeToggleBtn.change');
-    }
+    this._addListener(this.elements.themeToggleBtn, 'change', this.handleThemeToggleChange, 'themeToggleBtn.change');
+    this._addListener(this.elements.toggleDataValue, 'change', this.handleToggleDataValueChange, 'toggleDataValue.change');
     
     // Size selection
     this.setupSizeSelection();
+
+    // Setup Level Editor controls
+    this.setupEditorControls();
   }
 
   /**
@@ -103,7 +100,73 @@ export class EventHandler {
     }
   }
 
+  /**
+   * Sets up Level Editor interactive tool listeners.
+   */
+  setupEditorControls() {
+    // Tabs: Initial vs Win Condition
+    this._addListener(this.elements.editorTabInitial, 'click', () => LevelEditor.switchTab('initial'), 'editor.tabInitial');
+    this._addListener(this.elements.editorTabWin, 'click', () => LevelEditor.switchTab('winCondition'), 'editor.tabWin');
+
+    // Tool palette buttons
+    document.querySelectorAll('.editor-tool-btn').forEach(btn => {
+      this._addListener(btn, 'click', (e) => {
+        const cat = e.currentTarget.dataset.category;
+        const val = e.currentTarget.dataset.val;
+        LevelEditor.selectTool(cat, val);
+      }, 'editor.toolBtn');
+    });
+
+    // Editor grid size buttons
+    document.querySelectorAll('.editor-size-btn').forEach(btn => {
+      this._addListener(btn, 'click', (e) => {
+        const sz = parseInt(e.currentTarget.dataset.size, 10);
+        document.querySelectorAll('.editor-size-btn').forEach(b => b.classList.remove('selected'));
+        e.currentTarget.classList.add('selected');
+        LevelEditor.resetEditorState(sz);
+      }, 'editor.sizeBtn');
+    });
+
+    // Editor Actions
+    this._addListener(this.elements.editorSaveBtn, 'click', () => {
+      LevelEditor.saveLevel();
+      alert('Level saved successfully!');
+    }, 'editor.save');
+
+    this._addListener(this.elements.editorPlayBtn, 'click', () => {
+      LevelEditor.playLevel();
+    }, 'editor.play');
+
+    this._addListener(this.elements.editorClearBtn, 'click', () => {
+      if (confirm('Clear current editor grid?')) {
+        LevelEditor.resetEditorState(LevelEditor.getState().size);
+      }
+    }, 'editor.clear');
+
+    this._addListener(this.elements.editorCopyDslBtn, 'click', () => {
+      const dsl = LevelEditor.generateDSL();
+      navigator.clipboard?.writeText(dsl).then(() => alert('Level DSL copied to clipboard!')).catch(() => alert('DSL: \n' + dsl));
+    }, 'editor.copyDsl');
+
+    this._addListener(this.elements.editorImportDslBtn, 'click', () => {
+      const text = this.elements.editorDslOutput?.value;
+      if (text) {
+        const res = LevelEditor.parseDSL(text);
+        if (res.success) alert('Level loaded from DSL!');
+        else alert('Error parsing DSL: ' + res.error);
+      }
+    }, 'editor.importDsl');
+
+    this._addListener(this.elements.editorLevelName, 'input', (e) => {
+      LevelEditor.setName(e.target.value);
+    }, 'editor.levelName');
+  }
+
   handleKeyDown(e) {
+    if (e.key === 'Escape') {
+      UIService.hideBurgerMenu();
+      return;
+    }
     if (Object.keys(DIRECTION_DELTAS).includes(e.key)) {
       e.preventDefault();
       this.game.handleMove(e.key);
@@ -171,6 +234,14 @@ export class EventHandler {
     this.game.handleClearStatistics();
   }
 
+  handleShowEditorClick() {
+    this.game.handleShowEditor();
+  }
+
+  handleHideEditorClick() {
+    this.game.handleHideEditor();
+  }
+
   handleTryAgainClick() {
     this.game.handleTryAgainQuestMode();
   }
@@ -181,6 +252,18 @@ export class EventHandler {
 
   handleNextQuestLevelClick() {
     this.game.handleNextQuestLevel();
+  }
+
+  handleTryAgainAkureClick() {
+    this.game.handleTryAgainAkureMode();
+  }
+
+  handleTryAnotherAkureClick() {
+    this.game.handleTryAnotherAkureMode();
+  }
+
+  handleNextAkureLevelClick() {
+    this.game.handleNextAkureLevel();
   }
 
   handleShowSettingsClick() {
