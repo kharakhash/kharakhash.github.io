@@ -127,25 +127,24 @@ export class Game {
     gameField.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
     gameField.style.gridTemplateRows = `repeat(${size}, 1fr)`;
 
-      const cellMatrix = Array.from({ length: size }, () => Array(size).fill(null));
-      for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-          const cell = document.createElement('div');
-          cell.className = 'cell';
-          cell.id = `cell-${r}-${c}`;
-          
-          if (cellTypes && cellTypes[r]?.[c] === 'inactive') {
-            cell.classList.add('cell-inactive');
-          } else if (cellTypes && cellTypes[r]?.[c] === 'medium') {
-            cell.classList.add('cell-medium');
-          }
-
-          gameField.appendChild(cell);
-          cellMatrix[r][c] = cell;
+    const cellMatrix = Array.from({ length: size }, () => Array(size).fill(null));
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.id = `cell-${r}-${c}`;
+        
+        if (cellTypes && cellTypes[r]?.[c] === 'inactive') {
+          cell.classList.add('cell-inactive');
+        } else if (cellTypes && cellTypes[r]?.[c] === 'medium') {
+          cell.classList.add('cell-medium');
         }
+
+        gameField.appendChild(cell);
+        cellMatrix[r][c] = cell;
       }
-      this.elements.cells = cellMatrix;
     }
+    this.elements.cells = cellMatrix;
 
     this.placeInitialTiles();
     
