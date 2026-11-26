@@ -1,5 +1,4 @@
 import { ErrorHandler } from './modules/ErrorHandling.js';
-import { LevelEditor } from './levels-builder/LevelEditor.js';
 import { StateManager } from './modules/StateManager.js';
 import { DIRECTION_DELTAS, SWIPE_THRESHOLD } from './modules/constants.js';
 
@@ -56,11 +55,6 @@ export class EventHandler {
     this._addListener(this.elements.burgerMenuBackdrop, 'click', () => UIService.hideBurgerMenu(), 'burgerMenu.backdrop');
     this._addListener(this.elements.menuSettingsBtn, 'click', this.handleShowSettingsClick, 'menuSettings.click');
     this._addListener(this.elements.menuStatsBtn, 'click', this.handleShowStatisticsClick, 'menuStats.click');
-    this._addListener(this.elements.menuEditorBtn, 'click', this.handleShowEditorClick, 'menuEditor.click');
-
-    // Level Editor Buttons
-    this._addListener(this.elements.editorBtn, 'click', this.handleShowEditorClick, 'editorBtn.click');
-    this._addListener(this.elements.backFromEditorBtn, 'click', this.handleHideEditorClick, 'backFromEditorBtn.click');
     
     // Mode Carousel Buttons
     this._addListener(this.elements.modeCarouselPrevBtn, 'click', () => this.game.handleCarouselStep(-1), 'carousel.prev');
@@ -71,11 +65,6 @@ export class EventHandler {
     this._addListener(this.elements.tryAnotherBtn, 'click', this.handleTryAnotherClick, 'tryAnotherBtn.click');
     this._addListener(this.elements.tryAnotherInfinityBtn, 'click', this.handleTryAnotherClick, 'tryAnotherInfinityBtn.click');
     this._addListener(this.elements.nextQuestLevelBtn, 'click', this.handleNextQuestLevelClick, 'nextQuestLevelBtn.click');
-
-    // Akure mode Popups
-    this._addListener(this.elements.nextAkureLevelBtn, 'click', this.handleNextAkureLevelClick, 'nextAkureLevelBtn.click');
-    this._addListener(this.elements.tryAgainAkureBtn, 'click', this.handleTryAgainAkureClick, 'tryAgainAkureBtn.click');
-    this._addListener(this.elements.tryAnotherAkureBtn, 'click', this.handleTryAnotherAkureClick, 'tryAnotherAkureBtn.click');
     
     // Theme and value display toggles
     this._addListener(this.elements.themeToggleBtn, 'change', this.handleThemeToggleChange, 'themeToggleBtn.change');
@@ -83,9 +72,6 @@ export class EventHandler {
     
     // Size selection
     this.setupSizeSelection();
-
-    // Setup Level Editor controls
-    this.setupEditorControls();
   }
 
   /**
@@ -100,154 +86,14 @@ export class EventHandler {
     }
   }
 
-  /**
-   * Sets up Level Editor interactive tool listeners.
-   */
-  setupEditorControls() {
-    // Mode toggle
-    if (this.elements.editorModeToggleBtn) {
-      this._addListener(this.elements.editorModeToggleBtn, 'click', () => {
-        LevelEditor.toggleMode();
-      }, 'editor.modeToggle');
-    }
-
-    // Move limit input
-    if (this.elements.editorMoveLimit) {
-      this._addListener(this.elements.editorMoveLimit, 'input', (e) => {
-        const val = parseInt(e.target.value, 10);
-        LevelEditor.setMoveLimit(!isNaN(val) && val > 0 ? val : null);
-      }, 'editor.moveLimit');
-    }
-
-    // Tabs: Initial vs Win Condition
-    this._addListener(this.elements.editorTabInitial, 'click', () => LevelEditor.switchTab('initial'), 'editor.tabInitial');
-    this._addListener(this.elements.editorTabWin, 'click', () => LevelEditor.switchTab('winCondition'), 'editor.tabWin');
-
-    // Quest Win Condition Type Buttons
-    if (this.elements.editorWinConditionAllCleared) {
-      this._addListener(this.elements.editorWinConditionAllCleared, 'click', () => {
-        LevelEditor.setWinConditionType('all_cleared');
-      }, 'editor.winAllCleared');
-    }
-
-    if (this.elements.editorWinConditionCustomGrid) {
-      this._addListener(this.elements.editorWinConditionCustomGrid, 'click', () => {
-        LevelEditor.setWinConditionType('custom_grid');
-      }, 'editor.winCustomGrid');
-    }
-
-    // Tool palette buttons
-    document.querySelectorAll('.editor-tool-btn').forEach(btn => {
-      this._addListener(btn, 'click', (e) => {
-        const cat = e.currentTarget.dataset.category;
-        const val = e.currentTarget.dataset.val;
-        LevelEditor.selectTool(cat, val);
-      }, 'editor.toolBtn');
-    });
-
-    // Editor grid size buttons
-    document.querySelectorAll('.editor-size-btn').forEach(btn => {
-      this._addListener(btn, 'click', (e) => {
-        const sz = parseInt(e.currentTarget.dataset.size, 10);
-        document.querySelectorAll('.editor-size-btn').forEach(b => b.classList.remove('selected'));
-        e.currentTarget.classList.add('selected');
-        LevelEditor.resetEditorState(sz);
-      }, 'editor.sizeBtn');
-    });
-
-    // Editor Actions
-    this._addListener(this.elements.editorSaveBtn, 'click', () => {
-      const saved = LevelEditor.saveLevel();
-      if (saved) {
-        alert('Level saved successfully!');
-      }
-    }, 'editor.save');
-
-    this._addListener(this.elements.editorPlayBtn, 'click', () => {
-      LevelEditor.playLevel();
-    }, 'editor.play');
-
-    this._addListener(this.elements.editorClearBtn, 'click', () => {
-      if (confirm('Clear current editor grid?')) {
-        LevelEditor.resetEditorState(LevelEditor.getState().size);
-      }
-    }, 'editor.clear');
-
-    this._addListener(this.elements.editorCopyDslBtn, 'click', () => {
-      const dsl = LevelEditor.generateDSL();
-      navigator.clipboard?.writeText(dsl).then(() => alert('Level DSL copied to clipboard!')).catch(() => alert('DSL: \n' + dsl));
-    }, 'editor.copyDsl');
-
-    this._addListener(this.elements.editorImportDslBtn, 'click', () => {
-      const text = this.elements.editorDslOutput?.value;
-      if (text) {
-        const res = LevelEditor.parseDSL(text);
-        if (res.success) alert('Level loaded from DSL!');
-        else alert('Error parsing DSL: ' + res.error);
-      }
-    }, 'editor.importDsl');
-
-    // File Download & Upload
-    if (this.elements.editorDownloadDslBtn) {
-      this._addListener(this.elements.editorDownloadDslBtn, 'click', () => {
-        LevelEditor.downloadDSLFile();
-      }, 'editor.downloadDsl');
-    }
-
-    if (this.elements.editorUploadDslBtn && this.elements.editorFileInput) {
-      this._addListener(this.elements.editorUploadDslBtn, 'click', () => {
-        this.elements.editorFileInput.click();
-      }, 'editor.uploadDslClick');
-
-      this._addListener(this.elements.editorFileInput, 'change', (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-          LevelEditor.importDSLFile(file);
-          e.target.value = '';
-        }
-      }, 'editor.fileInputChange');
-    }
-
-    this._addListener(this.elements.editorLevelName, 'input', (e) => {
-      LevelEditor.setName(e.target.value);
-    }, 'editor.levelName');
-
-    // Quick Test Modal Controls
-    if (this.elements.editorTestCloseBtn) {
-      this._addListener(this.elements.editorTestCloseBtn, 'click', () => {
-        LevelEditor.closeTest();
-      }, 'editor.testClose');
-    }
-
-    if (this.elements.editorTestExitBtn) {
-      this._addListener(this.elements.editorTestExitBtn, 'click', () => {
-        LevelEditor.closeTest();
-      }, 'editor.testExit');
-    }
-
-    if (this.elements.editorTestRestartBtn) {
-      this._addListener(this.elements.editorTestRestartBtn, 'click', () => {
-        LevelEditor.restartTest();
-      }, 'editor.testRestart');
-    }
-  }
-
   handleKeyDown(e) {
     if (e.key === 'Escape') {
-      if (LevelEditor.isTesting()) {
-        LevelEditor.closeTest();
-        return;
-      }
       UIService.hideBurgerMenu();
       return;
     }
 
     if (Object.keys(DIRECTION_DELTAS).includes(e.key)) {
       e.preventDefault();
-      if (LevelEditor.isTesting()) {
-        LevelEditor.handleTestMove(e.key);
-        return;
-      }
       this.game.handleMove(e.key);
     }
   }
@@ -288,11 +134,7 @@ export class EventHandler {
     }
     
     if (direction) {
-      if (LevelEditor.isTesting()) {
-        LevelEditor.handleTestMove(direction);
-      } else {
-        this.game.handleMove(direction);
-      }
+      this.game.handleMove(direction);
     }
     
     this.touchStartX = this.touchStartY = null;
@@ -322,14 +164,6 @@ export class EventHandler {
     this.game.handleClearStatistics();
   }
 
-  handleShowEditorClick() {
-    this.game.handleShowEditor();
-  }
-
-  handleHideEditorClick() {
-    this.game.handleHideEditor();
-  }
-
   handleTryAgainClick() {
     this.game.handleTryAgainQuestMode();
   }
@@ -340,18 +174,6 @@ export class EventHandler {
 
   handleNextQuestLevelClick() {
     this.game.handleNextQuestLevel();
-  }
-
-  handleTryAgainAkureClick() {
-    this.game.handleTryAgainAkureMode();
-  }
-
-  handleTryAnotherAkureClick() {
-    this.game.handleTryAnotherAkureMode();
-  }
-
-  handleNextAkureLevelClick() {
-    this.game.handleNextAkureLevel();
   }
 
   handleShowSettingsClick() {

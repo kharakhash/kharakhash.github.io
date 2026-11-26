@@ -9,8 +9,7 @@ export const StateManager = (() => {
     'grid', 'size', 'selectedSize', 'gridType', 'selectedGridType', 'history', 'score', 'moves',
     'levelMoves', 'totalMoves', 'levelScore', 'totalScore',
     'isProcessing', 'lastMoveTime', 'touchStartX', 'touchStartY',
-    'initialGrid', 'cellTypes', 'lockedCells', 'winConditionGrid',
-    'customLevelName', 'akureMaxMoves', 'akureQuestLevel', 'akureModeType'
+    'initialGrid', 'cellTypes', 'lockedCells', 'winConditionGrid'
   ]);
   const UI_KEYS = new Set(['theme', 'showValues', 'gameMode', 'isOverlayActive']);
 
@@ -34,11 +33,7 @@ export const StateManager = (() => {
     initialGrid: [],
     cellTypes: [],
     lockedCells: [],
-    winConditionGrid: null,
-    customLevelName: null,
-    akureMaxMoves: null,
-    akureQuestLevel: 1,
-    akureModeType: 'random' // 'random' | 'quest'
+    winConditionGrid: null
   };
 
   const DEFAULT_UI_STATE = {

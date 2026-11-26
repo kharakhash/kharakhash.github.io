@@ -187,7 +187,7 @@ test('7. StorageService & schema migration with deduplication', () => {
     size: 3,
     moves: 4,
     score: 0,
-    mode: 'akure',
+    mode: 'quest',
   };
 
   StorageService.saveGameStats(sampleStats);

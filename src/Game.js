@@ -6,10 +6,8 @@ import { StatisticsService } from './modules/StatisticsService.js';
 import { GameLogic } from './modules/GameLogic.js';
 import { GridService } from './modules/GridService.js';
 import { AnimationService } from './modules/AnimationService.js';
-import { LevelEditor } from './levels-builder/LevelEditor.js';
 import { EventHandler } from './EventHandler.js';
-import { AkureLevelGenerator } from './modules/AkureLevelGenerator.js';
-import { DEFAULT_SIZE, INITIAL_TILES, AKURE_INITIAL_TILES, ANIMATION_DURATION } from './modules/constants.js';
+import { DEFAULT_SIZE, INITIAL_TILES, ANIMATION_DURATION } from './modules/constants.js';
 
 export class Game {
   constructor() {
@@ -25,7 +23,6 @@ export class Game {
       
       UIService.setElements(this.elements);
       StatisticsService.setElements(this.elements);
-      LevelEditor.init(this.elements, this);
 
       this.eventHandler.setupEventListeners();
       this.createGrid();
@@ -44,26 +41,17 @@ export class Game {
    */
   cacheElements() {
     const elementIds = [
-      'gameContainer', 'settingsContainer', 'statisticsContainer', 'editorContainer',
+      'gameContainer', 'settingsContainer', 'statisticsContainer',
       'score', 'moves', 'restartBtn', 'undoBtn', 'toggleDataValue', 'themeToggleBtn', 'saveSettingsBtn',
       'statisticsBtn', 'backFromStatisticsBtn', 'recordMoves', 'recordScore',
       'totalMoves', 'totalScore', 'gamesList', 'clearStatisticsBtn',
-      'editorBtn', 'backFromEditorBtn', 'editorCanvas', 'editorLevelName', 'editorModeBadge',
-      'editorModeToggleBtn', 'editorMoveLimit', 'editorWinConditionBar', 'editorWinConditionAllCleared',
-      'editorWinConditionCustomGrid', 'editorValidationFeedback', 'editorDownloadDslBtn', 'editorUploadDslBtn',
-      'editorFileInput', 'editorTestModal', 'editorTestCloseBtn', 'editorTestRestartBtn', 'editorTestExitBtn',
-      'editorDslOutput', 'editorTabInitial', 'editorTabWin', 'editorSaveBtn', 'editorPlayBtn',
-      'editorImportDslBtn', 'editorCopyDslBtn', 'editorClearBtn', 'editorSavedLevelsList',
       'modeCarouselPrevBtn', 'modeCarouselNextBtn', 'modeCarouselTitle', 'modeCarouselBadge', 'modeCarouselDesc',
       'burgerMenuBtn', 'burgerMenuOverlay', 'burgerMenuBackdrop', 'closeBurgerMenuBtn',
-      'menuSettingsBtn', 'menuStatsBtn', 'menuEditorBtn',
+      'menuSettingsBtn', 'menuStatsBtn',
       'gameOverPopup', 'questFailPopup', 'tryAgainBtn', 'tryAnotherBtn', 'tryAnotherInfinityBtn',
       'questWinPopup', 'winMoves', 'winScore', 'nextQuestLevelBtn',
-      'akureWinPopup', 'akureWinMoves', 'akureWinScore', 'nextAkureLevelBtn',
-      'akureFailPopup', 'tryAgainAkureBtn', 'tryAnotherAkureBtn',
-      'infinityScoreDisplay', 'questScoreDisplay', 'akureScoreDisplay',
+      'infinityScoreDisplay', 'questScoreDisplay',
       'levelMoves', 'totalMovesDisplay', 'levelScore', 'totalScoreDisplay',
-      'akureFilled', 'akureLevelMoves', 'akureLevelScore', 'akureLevelBadge',
       'game', 'scoreContainer', 'settingsBtn', 'cancelSettingsBtn'
     ];
     
@@ -148,8 +136,8 @@ export class Game {
 
     this.placeInitialTiles();
     
-    // Save initial grid for Quest / Akure mode "Try Again" functionality
-    if (gameMode === 'quest' || gameMode === 'akure') {
+    // Save initial grid for Quest mode "Try Again" functionality
+    if (gameMode === 'quest') {
       StateManager.setState((prevState) => ({
         initialGrid: GridService.cloneGrid(prevState.grid)
       }));
@@ -157,45 +145,10 @@ export class Game {
   }
 
   /**
-   * Places initial tiles on the grid based on mode or custom layout.
+   * Places initial tiles on the grid based on mode.
    */
   placeInitialTiles() {
-    const { size, cellTypes, customLevelName, akureModeType, akureQuestLevel, gridType = 'square' } = StateManager.getGameState();
-    const { gameMode } = StateManager.getUIState();
-    
-    if (gameMode === 'akure') {
-      if (customLevelName) return;
-
-      const currentQuestLvl = StorageService.getAkureQuestLevel() || akureQuestLevel || 1;
-      const levelData = (akureModeType === 'quest')
-        ? AkureLevelGenerator.getLevel(currentQuestLvl)
-        : AkureLevelGenerator.generateRandomLevel(size, cellTypes, gridType);
-
-      const lvlSize = levelData.size || size;
-      const lvlCellTypes = levelData.cellTypes || GridService.createEmptyGrid(lvlSize, 'active', gridType);
-      const newGrid = GridService.createEmptyGrid(lvlSize, null, gridType);
-
-      if (Array.isArray(levelData.initialTiles)) {
-        for (const tile of levelData.initialTiles) {
-          if (GridService.isValidPosition(tile.row, tile.col, lvlSize, lvlCellTypes, gridType)) {
-            newGrid[tile.row][tile.col] = tile.value;
-          }
-        }
-      }
-
-      StateManager.setState({
-        size: lvlSize,
-        cellTypes: lvlCellTypes,
-        akureMaxMoves: levelData.maxMoves || null,
-        akureQuestLevel: currentQuestLvl,
-        grid: newGrid,
-        initialGrid: GridService.cloneGrid(newGrid),
-        levelMoves: 0,
-        levelScore: 0,
-        history: [],
-      });
-      return;
-    }
+    const { size, cellTypes, gridType = 'square' } = StateManager.getGameState();
 
     const playablePositions = GridService.getAllPlayableCells(size, cellTypes, gridType);
     
@@ -221,40 +174,6 @@ export class Game {
         initialGrid: GridService.cloneGrid(newGrid)
       };
     });
-  }
-
-  /**
-   * Loads and starts playing a custom-designed level from the Level Editor.
-   * @param {Object} levelData
-   */
-  loadAndPlayCustomLevel(levelData) {
-    const { size, mode, cellTypes, initialGrid, lockedCells, winConditionGrid, name } = levelData;
-
-    StateManager.setState({
-      size,
-      selectedSize: size,
-      gameMode: mode,
-      cellTypes: cellTypes.map(row => [...row]),
-      lockedCells: [...lockedCells],
-      winConditionGrid: winConditionGrid ? winConditionGrid.map(row => [...row]) : null,
-      customLevelName: name,
-      moves: 0,
-      score: 0,
-      levelMoves: 0,
-      totalMoves: 0,
-      levelScore: 0,
-      totalScore: 0,
-      history: [],
-      isProcessing: false,
-      grid: GridService.cloneGrid(initialGrid),
-      initialGrid: GridService.cloneGrid(initialGrid),
-    });
-
-    this.createGrid();
-    // Directly place custom initial grid
-    StateManager.setState({ grid: GridService.cloneGrid(initialGrid) });
-    UIService.hideEditor();
-    UIService.render(StateManager.getState());
   }
 
   // --- Animation coordination ---
@@ -407,18 +326,8 @@ export class Game {
     StatisticsService.clearStatistics();
   }
 
-  handleShowEditor() {
-    UIService.showEditor();
-    LevelEditor.render();
-  }
-
-  handleHideEditor() {
-    UIService.hideEditor();
-  }
-
   handleCarouselStep(direction) {
-    const newMode = UIService.stepCarousel(direction);
-    LevelEditor.setMode(newMode === 'akure' ? 'akure' : 'quest');
+    UIService.stepCarousel(direction);
   }
 
   handleTryAgainQuestMode() {
@@ -431,18 +340,6 @@ export class Game {
 
   handleNextQuestLevel() {
     this._handleIntent(GameLogic.startNextQuestLevel());
-  }
-
-  handleTryAgainAkureMode() {
-    this._handleIntent(GameLogic.tryAgainAkureMode());
-  }
-
-  handleTryAnotherAkureMode() {
-    this._handleIntent(GameLogic.tryAnotherAkureMode());
-  }
-
-  handleNextAkureLevel() {
-    this._handleIntent(GameLogic.startNextAkureLevel());
   }
 
   handleShowSettings() {

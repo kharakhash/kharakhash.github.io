@@ -54,7 +54,7 @@ export const RANDOM_TILE_SPAWN_LIMITS = {
 };
 
 // Modes metadata for Carousel
-export const MODES = ['infinity', 'quest', 'akure'];
+export const MODES = ['infinity', 'quest'];
 
 export const MODE_INFO = {
   infinity: {
@@ -70,37 +70,8 @@ export const MODE_INFO = {
     title: 'Quest',
     badge: 'Clearance',
     desc: 'Clear the entire grid down to the very last cell by planning perfect splits.'
-  },
-  akure: {
-    id: 'akure',
-    name: 'Akure',
-    title: 'Akure',
-    badge: 'Fill Up',
-    desc: 'Reverse goal: split cells to multiply numbers and fill the entire board with tiles!'
   }
 };
-
-// Initial tile values for Akure mode by grid size (starts with single high-value tile to divide)
-export const AKURE_INITIAL_TILES = {
-  3: [8, 4],
-  4: [16, 8],
-  5: [32, 16, 8],
-  6: [1024],
-  7: [2048],
-  8: [4096],
-  9: [4096, 2048],
-  10: [4096, 4096],
-  11: [4096, 4096, 2048]
-};
-
-// Level Builder Cell Types
-export const CELL_TYPES = {
-  ACTIVE: 'active',     // Standard playable tile area
-  MEDIUM: 'medium',     // Target/reserved slot with target value/color
-  INACTIVE: 'inactive'  // Void / Wall - excluded from playable field
-};
-
-export const TILE_PALETTE = [2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2];
 
 // Direction deltas for movement
 export const DIRECTION_DELTAS = {
@@ -115,7 +86,6 @@ export const HEX_DIRECTION_DELTAS = {};
 export const HEX_INITIAL_TILES = {};
 export const HEX_RANDOM_TILE_VALUES = {};
 export const HEX_RANDOM_TILE_SPAWN_LIMITS = {};
-export const HEX_AKURE_INITIAL_TILES = {};
 
 // Animation class mappings
 export const ANIMATION_CLASSES = {
