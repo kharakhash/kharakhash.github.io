@@ -180,7 +180,6 @@ export const GameLogic = (() => {
   const tryAgainQuestMode = () => {
     const state = StateManager.getState();
     if (state.gameMode === 'quest' && state.initialGrid.length > 0) {
-      saveCurrentGameStats(state);
       StateManager.setState((prevState) => ({
         levelMoves: 0,
         levelScore: 0,
@@ -227,7 +226,6 @@ export const GameLogic = (() => {
   const tryAgainAkureMode = () => {
     const state = StateManager.getState();
     if (state.gameMode === 'akure' && state.initialGrid.length > 0) {
-      saveCurrentGameStats(state);
       StateManager.setState((prevState) => ({
         levelMoves: 0,
         levelScore: 0,

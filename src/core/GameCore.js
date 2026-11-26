@@ -1,5 +1,157 @@
 import { GridService } from '../modules/GridService.js';
-import { DIRECTION_DELTAS, RANDOM_TILE_VALUES, RANDOM_TILE_SPAWN_LIMITS } from '../modules/constants.js';
+import {
+  DIRECTION_DELTAS,
+  HEX_DIRECTION_DELTAS,
+  RANDOM_TILE_VALUES,
+  RANDOM_TILE_SPAWN_LIMITS,
+  HEX_RANDOM_TILE_VALUES,
+  HEX_RANDOM_TILE_SPAWN_LIMITS
+} from '../modules/constants.js';
+
+/**
+ * Maps raw direction keys (including standard arrow keys) to hex direction names.
+ */
+const resolveHexDirection = (direction) => {
+  if (HEX_DIRECTION_DELTAS[direction]) return direction;
+  const map = {
+    'ArrowLeft': 'HexLeft',
+    'ArrowRight': 'HexRight',
+    'ArrowUp': 'HexUpRight',
+    'ArrowDown': 'HexDownRight',
+  };
+  return map[direction] || 'HexRight';
+};
+
+/**
+ * Computes move on a hexagonal grid board.
+ */
+const computeHexMove = (state, rawDirection) => {
+  const { grid, size } = state;
+  const hexDir = resolveHexDirection(rawDirection);
+  const dirDelta = HEX_DIRECTION_DELTAS[hexDir];
+  const { dx, dy, dz } = dirDelta;
+  const numRows = 2 * size - 1;
+
+  // 1. Gather all cells with their projection along dirDelta
+  const cellOrder = [];
+  for (let r = 0; r < numRows; r++) {
+    const rowLen = GridService.hexRowLength(size, r);
+    for (let c = 0; c < rowLen; c++) {
+      const cube = GridService.hexRcToCube(size, r, c);
+      const score = cube.x * dx + cube.y * dy + cube.z * dz;
+      cellOrder.push({ row: r, col: c, cube, score });
+    }
+  }
+
+  // Sort descending by score: cells further along movement direction are processed first
+  cellOrder.sort((a, b) => b.score - a.score);
+
+  const newGrid = GridService.createEmptyGrid(size, null, 'hex');
+  const disappearingCells = [];
+  const splitActions = [];
+  let changed = false;
+
+  for (const { row, col, cube } of cellOrder) {
+    if (state.cellTypes && state.cellTypes[row]?.[col] === 'inactive') {
+      continue;
+    }
+    const value = grid[row]?.[col];
+    if (typeof value !== 'number' || value < 2) {
+      continue;
+    }
+
+    const isLocked = state.lockedCells && (
+      (Array.isArray(state.lockedCells) && state.lockedCells.some(c => c.row === row && c.col === col)) ||
+      (state.lockedCells instanceof Set && state.lockedCells.has(`${row},${col}`))
+    );
+    if (isLocked) {
+      newGrid[row][col] = value;
+      continue;
+    }
+
+    // Check immediate neighbor in direction
+    const nextX = cube.x + dx;
+    const nextY = cube.y + dy;
+    const nextZ = cube.z + dz;
+    const R = size - 1;
+    const inBounds = Math.abs(nextX) <= R && Math.abs(nextY) <= R && Math.abs(nextZ) <= R;
+
+    let neighborPlayableAndEmpty = false;
+    let nextR = null;
+    let nextC = null;
+
+    if (inBounds) {
+      [nextR, nextC] = GridService.hexCubeToRc(size, nextX, nextY, nextZ);
+      const playable = !state.cellTypes || state.cellTypes[nextR]?.[nextC] !== 'inactive';
+      if (playable && state.grid[nextR]?.[nextC] === null) {
+        neighborPlayableAndEmpty = true;
+      }
+    }
+
+    if (neighborPlayableAndEmpty) {
+      // Split tile into two halves
+      const splitValue = value / 2;
+      const [targetRow, targetCol] = GridService.findNewPositionHex(
+        state.grid,
+        size,
+        nextR,
+        nextC,
+        dirDelta,
+        state.cellTypes
+      );
+
+      newGrid[row][col] = splitValue;
+      newGrid[targetRow][targetCol] = splitValue;
+
+      const action = {
+        from: { row, col },
+        to: { row: targetRow, col: targetCol },
+        value: splitValue,
+        deltaRow: targetRow - row,
+        deltaCol: targetCol - col,
+        dirDelta,
+      };
+      splitActions.push(action);
+
+      if (splitValue === 2) {
+        disappearingCells.push({ row, col }, { row: targetRow, col: targetCol });
+      }
+      changed = true;
+    } else {
+      // Neighbor is blocked, obstacle, or boundary: cannot split, stays in place
+      newGrid[row][col] = value;
+    }
+  }
+
+  let spawnedCellPayload = null;
+  if (changed) {
+    const nextStateForSpawn = {
+      ...state,
+      grid: newGrid,
+      gridType: 'hex',
+      moves: state.moves + (state.gameMode === 'infinity' ? 1 : 0),
+      disappearingCells,
+      scoreGain: disappearingCells.length,
+    };
+    console.log(`[GameCore] -> Move "${hexDir}" (Hex ${size}x${size}x${size}) | Splits: ${splitActions.length} | Disappearing: ${disappearingCells.length}`);
+    spawnedCellPayload = GameCore.maybeAddRandomCell(nextStateForSpawn, disappearingCells);
+  }
+
+  const effects = {
+    splitActions,
+    disappearingCells,
+    scoreGain: disappearingCells.length,
+    spawnedCell: spawnedCellPayload
+      ? { position: spawnedCellPayload.position, value: spawnedCellPayload.value }
+      : undefined,
+  };
+
+  return {
+    patch: { grid: newGrid },
+    changed,
+    effects,
+  };
+};
 
 /**
  * Builds the traversal order based on sweep direction to ensure cells move correctly.
@@ -101,6 +253,11 @@ export const GameCore = {
    * Evaluates a directional move, returns the new grid plus metadata for animations.
    */
   computeMove: (state, direction) => {
+    const isHex = state.gridType === 'hex' || Boolean(HEX_DIRECTION_DELTAS[direction]);
+    if (isHex) {
+      return computeHexMove(state, direction);
+    }
+
     const { grid, size } = state;
     const [deltaRow, deltaCol] = DIRECTION_DELTAS[direction];
     const ordering = createProcessingOrder(size, deltaRow, deltaCol);
@@ -140,7 +297,7 @@ export const GameCore = {
         disappearingCells,
         scoreGain: disappearingCells.length,
       };
-      console.log(`[GameCore] ➡️ Move "${direction}" (${size}x${size}) | Splits: ${splitActions.length} | Disappearing: ${disappearingCells.length}`);
+      console.log(`[GameCore] -> Move "${direction}" (${size}x${size}) | Splits: ${splitActions.length} | Disappearing: ${disappearingCells.length}`);
       spawnedCellPayload = GameCore.maybeAddRandomCell(nextStateForSpawn, disappearingCells);
     }
 
@@ -168,19 +325,23 @@ export const GameCore = {
       return null;
     }
 
+    const isHex = state.gridType === 'hex';
     const disappearingList = Array.isArray(disappearingCells) ? disappearingCells : [];
-    const allCandidateCells = GridService.getAllEmptyCellsInfinity(state.grid, state.size, disappearingList, state.cellTypes);
-    const rawEmptyCells = GridService.getAllEmptyCells(state.grid, state.size, state.cellTypes);
+    const allCandidateCells = GridService.getAllEmptyCellsInfinity(state.grid, state.size, disappearingList, state.cellTypes, state.gridType);
+    const rawEmptyCells = GridService.getAllEmptyCells(state.grid, state.size, state.cellTypes, state.gridType);
     const rawEmptyCount = rawEmptyCells.length;
     const scoreGain = disappearingList.length || state?.scoreGain || 0;
     const gridSum = GridService.calculateGridSum(state.grid);
-    const limits = RANDOM_TILE_SPAWN_LIMITS[state.size] || {
-      maxGridSum: state.size * 12,
-      minEmptyCells: state.size / 1.5,
-    };
+    const limits = isHex
+      ? (HEX_RANDOM_TILE_SPAWN_LIMITS[state.size] || { maxGridSum: 80, minEmptyCells: 2 })
+      : (RANDOM_TILE_SPAWN_LIMITS[state.size] || {
+          maxGridSum: state.size * 12,
+          minEmptyCells: state.size / 1.5,
+        });
 
+    const sizeLabel = isHex ? `${state.size}x${state.size}x${state.size}` : `${state.size}x${state.size}`;
     console.log(
-      `[GameCore] 🎲 Spawn check (${state.size}x${state.size}) | ` +
+      `[GameCore] 🎲 Spawn check (${sizeLabel}) | ` +
       `GridSum: ${gridSum} (limit <= ${limits.maxGridSum}) | ` +
       `EmptyCells: ${rawEmptyCount} + ${scoreGain} (${allCandidateCells.length}) (limit > ${limits.minEmptyCells})`
     );
@@ -202,7 +363,7 @@ export const GameCore = {
 
     const spawnPool = rawEmptyCells.length > 0 ? rawEmptyCells : allCandidateCells;
     const [row, col] = spawnPool[Math.floor(Math.random() * spawnPool.length)];
-    const generator = RANDOM_TILE_VALUES[state.size];
+    const generator = isHex ? HEX_RANDOM_TILE_VALUES[state.size] : RANDOM_TILE_VALUES[state.size];
     const value = generator ? generator() : 16;
     const updatedGrid = GridService.cloneGrid(state.grid);
     updatedGrid[row][col] = value;
@@ -220,6 +381,54 @@ export const GameCore = {
    * Checks whether any legal move is still possible on the current grid.
    */
   canMakeMove: (state) => {
+    const isHex = state.gridType === 'hex';
+
+    if (isHex) {
+      const numRows = 2 * state.size - 1;
+      for (let r = 0; r < numRows; r++) {
+        const numCols = GridService.hexRowLength(state.size, r);
+        for (let c = 0; c < numCols; c++) {
+          if (state.cellTypes && state.cellTypes[r]?.[c] === 'inactive') continue;
+          const value = state.grid[r]?.[c];
+          if (value === null || value === 1) {
+            return true;
+          }
+        }
+      }
+
+      const R = state.size - 1;
+      for (let r = 0; r < numRows; r++) {
+        const numCols = GridService.hexRowLength(state.size, r);
+        for (let c = 0; c < numCols; c++) {
+          if (state.cellTypes && state.cellTypes[r]?.[c] === 'inactive') continue;
+          const isLocked = state.lockedCells && (
+            (Array.isArray(state.lockedCells) && state.lockedCells.some(cell => cell.row === r && cell.col === c)) ||
+            (state.lockedCells instanceof Set && state.lockedCells.has(`${r},${c}`))
+          );
+          if (isLocked) continue;
+
+          const value = state.grid[r]?.[c];
+          if (typeof value !== 'number' || value < 2) {
+            continue;
+          }
+
+          const cube = GridService.hexRcToCube(state.size, r, c);
+          for (const delta of Object.values(HEX_DIRECTION_DELTAS)) {
+            const nx = cube.x + delta.dx;
+            const ny = cube.y + delta.dy;
+            const nz = cube.z + delta.dz;
+            if (Math.abs(nx) <= R && Math.abs(ny) <= R && Math.abs(nz) <= R) {
+              const [nr, nc] = GridService.hexCubeToRc(state.size, nx, ny, nz);
+              if ((!state.cellTypes || state.cellTypes[nr]?.[nc] !== 'inactive') && state.grid[nr]?.[nc] === null) {
+                return true;
+              }
+            }
+          }
+        }
+      }
+      return false;
+    }
+
     for (let r = 0; r < state.size; r++) {
       for (let c = 0; c < state.size; c++) {
         if (state.cellTypes && state.cellTypes[r]?.[c] === 'inactive') continue;

@@ -6,7 +6,7 @@ import { EventBus } from './EventBus.js';
  */
 export const StateManager = (() => {
   const GAME_KEYS = new Set([
-    'grid', 'size', 'selectedSize', 'history', 'score', 'moves',
+    'grid', 'size', 'selectedSize', 'gridType', 'selectedGridType', 'history', 'score', 'moves',
     'levelMoves', 'totalMoves', 'levelScore', 'totalScore',
     'isProcessing', 'lastMoveTime', 'touchStartX', 'touchStartY',
     'initialGrid', 'cellTypes', 'lockedCells', 'winConditionGrid',
@@ -18,6 +18,8 @@ export const StateManager = (() => {
     grid: [],
     size: 5,
     selectedSize: 5,
+    gridType: 'square', // 'square' | 'hex'
+    selectedGridType: 'square',
     history: [],
     score: 0,
     moves: 0,

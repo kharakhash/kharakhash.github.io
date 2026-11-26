@@ -9,7 +9,7 @@ import { AnimationService } from './modules/AnimationService.js';
 import { LevelEditor } from './levels-builder/LevelEditor.js';
 import { EventHandler } from './EventHandler.js';
 import { AkureLevelGenerator } from './modules/AkureLevelGenerator.js';
-import { DEFAULT_SIZE, INITIAL_TILES, AKURE_INITIAL_TILES, ANIMATION_DURATION } from './modules/constants.js';
+import { DEFAULT_SIZE, INITIAL_TILES, HEX_INITIAL_TILES, AKURE_INITIAL_TILES, ANIMATION_DURATION } from './modules/constants.js';
 
 export class Game {
   constructor() {
@@ -31,8 +31,9 @@ export class Game {
       this.createGrid();
 
       // Refresh UI after initialization
-      UIService.render(StateManager.getState());
-      UIService.highlightCurrentSize(StateManager.getState().size);
+      const currentState = StateManager.getState();
+      UIService.render(currentState);
+      UIService.highlightCurrentSize(currentState.size, currentState.gridType);
     } catch (error) {
       ErrorHandler.handle(error, 'Game.init');
     }
@@ -48,6 +49,9 @@ export class Game {
       'statisticsBtn', 'backFromStatisticsBtn', 'recordMoves', 'recordScore',
       'totalMoves', 'totalScore', 'gamesList', 'clearStatisticsBtn',
       'editorBtn', 'backFromEditorBtn', 'editorCanvas', 'editorLevelName', 'editorModeBadge',
+      'editorModeToggleBtn', 'editorMoveLimit', 'editorWinConditionBar', 'editorWinConditionAllCleared',
+      'editorWinConditionCustomGrid', 'editorValidationFeedback', 'editorDownloadDslBtn', 'editorUploadDslBtn',
+      'editorFileInput', 'editorTestModal', 'editorTestCloseBtn', 'editorTestRestartBtn', 'editorTestExitBtn',
       'editorDslOutput', 'editorTabInitial', 'editorTabWin', 'editorSaveBtn', 'editorPlayBtn',
       'editorImportDslBtn', 'editorCopyDslBtn', 'editorClearBtn', 'editorSavedLevelsList',
       'modeCarouselPrevBtn', 'modeCarouselNextBtn', 'modeCarouselTitle', 'modeCarouselBadge', 'modeCarouselDesc',
@@ -60,7 +64,7 @@ export class Game {
       'infinityScoreDisplay', 'questScoreDisplay', 'akureScoreDisplay',
       'levelMoves', 'totalMovesDisplay', 'levelScore', 'totalScoreDisplay',
       'akureFilled', 'akureLevelMoves', 'akureLevelScore', 'akureLevelBadge',
-      'game', 'scoreContainer', 'settingsBtn', 'cancelSettingsBtn'
+      'game', 'hexControlsPad', 'scoreContainer', 'settingsBtn', 'cancelSettingsBtn'
     ];
     
     for (const id of elementIds) {
@@ -77,6 +81,8 @@ export class Game {
       game: {
         size: loadedState.size || DEFAULT_SIZE,
         selectedSize: loadedState.size || DEFAULT_SIZE,
+        gridType: loadedState.gridType || 'square',
+        selectedGridType: loadedState.selectedGridType || loadedState.gridType || 'square',
         grid: [],
         history: [],
         score: 0,
@@ -108,35 +114,79 @@ export class Game {
    * Creates and initializes game grid.
    */
   createGrid() {
-    const { size, cellTypes } = StateManager.getGameState();
+    const { size, cellTypes, gridType = 'square' } = StateManager.getGameState();
     const { gameMode } = StateManager.getUIState();
     const gameField = this.elements.game;
     if (!gameField) return;
     
     gameField.innerHTML = '';
-    gameField.style.display = 'grid';
-    gameField.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
-    gameField.style.gridTemplateRows = `repeat(${size}, 1fr)`;
+    gameField.dataset.size = String(size);
+    gameField.dataset.gridType = gridType;
 
-    // Create grid cells
-    const cellMatrix = Array.from({ length: size }, () => Array(size).fill(null));
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) {
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.id = `cell-${r}-${c}`;
-        
-        if (cellTypes && cellTypes[r]?.[c] === 'inactive') {
-          cell.classList.add('cell-inactive');
-        } else if (cellTypes && cellTypes[r]?.[c] === 'medium') {
-          cell.classList.add('cell-medium');
-        }
-
-        gameField.appendChild(cell);
-        cellMatrix[r][c] = cell;
-      }
+    const hexPad = this.elements.hexControlsPad;
+    if (hexPad) {
+      hexPad.classList.toggle('hidden', gridType !== 'hex');
     }
-    this.elements.cells = cellMatrix;
+
+    if (gridType === 'hex') {
+      gameField.classList.add('game-hex');
+      gameField.style.display = 'flex';
+      gameField.style.gridTemplateColumns = '';
+      gameField.style.gridTemplateRows = '';
+
+      const numRows = 2 * size - 1;
+      const cellMatrix = [];
+
+      for (let r = 0; r < numRows; r++) {
+        const rowLen = GridService.hexRowLength(size, r);
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'hex-row';
+        rowDiv.id = `hex-row-${r}`;
+
+        const rowCells = [];
+        for (let c = 0; c < rowLen; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell hex-cell';
+          cell.id = `cell-${r}-${c}`;
+
+          if (cellTypes && cellTypes[r]?.[c] === 'inactive') {
+            cell.classList.add('cell-inactive');
+          } else if (cellTypes && cellTypes[r]?.[c] === 'medium') {
+            cell.classList.add('cell-medium');
+          }
+
+          rowDiv.appendChild(cell);
+          rowCells.push(cell);
+        }
+        gameField.appendChild(rowDiv);
+        cellMatrix.push(rowCells);
+      }
+      this.elements.cells = cellMatrix;
+    } else {
+      gameField.classList.remove('game-hex');
+      gameField.style.display = 'grid';
+      gameField.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+      gameField.style.gridTemplateRows = `repeat(${size}, 1fr)`;
+
+      const cellMatrix = Array.from({ length: size }, () => Array(size).fill(null));
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.id = `cell-${r}-${c}`;
+          
+          if (cellTypes && cellTypes[r]?.[c] === 'inactive') {
+            cell.classList.add('cell-inactive');
+          } else if (cellTypes && cellTypes[r]?.[c] === 'medium') {
+            cell.classList.add('cell-medium');
+          }
+
+          gameField.appendChild(cell);
+          cellMatrix[r][c] = cell;
+        }
+      }
+      this.elements.cells = cellMatrix;
+    }
 
     this.placeInitialTiles();
     
@@ -152,24 +202,25 @@ export class Game {
    * Places initial tiles on the grid based on mode or custom layout.
    */
   placeInitialTiles() {
-    const { size, cellTypes, customLevelName, akureModeType, akureQuestLevel } = StateManager.getGameState();
+    const { size, cellTypes, customLevelName, akureModeType, akureQuestLevel, gridType = 'square' } = StateManager.getGameState();
     const { gameMode } = StateManager.getUIState();
+    const isHex = gridType === 'hex';
     
     if (gameMode === 'akure') {
       if (customLevelName) return;
 
       const currentQuestLvl = StorageService.getAkureQuestLevel() || akureQuestLevel || 1;
-      const levelData = akureModeType === 'quest'
+      const levelData = (akureModeType === 'quest' && !isHex)
         ? AkureLevelGenerator.getLevel(currentQuestLvl)
-        : AkureLevelGenerator.generateRandomLevel(size, cellTypes);
+        : AkureLevelGenerator.generateRandomLevel(size, cellTypes, gridType);
 
       const lvlSize = levelData.size || size;
-      const lvlCellTypes = levelData.cellTypes || GridService.createEmptyGrid(lvlSize, 'active');
-      const newGrid = GridService.createEmptyGrid(lvlSize);
+      const lvlCellTypes = levelData.cellTypes || GridService.createEmptyGrid(lvlSize, 'active', gridType);
+      const newGrid = GridService.createEmptyGrid(lvlSize, null, gridType);
 
       if (Array.isArray(levelData.initialTiles)) {
         for (const tile of levelData.initialTiles) {
-          if (GridService.isValidPosition(tile.row, tile.col, lvlSize, lvlCellTypes)) {
+          if (GridService.isValidPosition(tile.row, tile.col, lvlSize, lvlCellTypes, gridType)) {
             newGrid[tile.row][tile.col] = tile.value;
           }
         }
@@ -189,7 +240,7 @@ export class Game {
       return;
     }
 
-    const playablePositions = GridService.getAllPlayableCells(size, cellTypes);
+    const playablePositions = GridService.getAllPlayableCells(size, cellTypes, gridType);
     
     // Shuffle playable positions for random placement
     const positions = [...playablePositions];
@@ -198,10 +249,12 @@ export class Game {
       [positions[i], positions[j]] = [positions[j], positions[i]];
     }
 
-    const initialTiles = INITIAL_TILES[size] || [64, 32, 16];
+    const initialTiles = isHex
+      ? (HEX_INITIAL_TILES[size] || [64, 32, 16])
+      : (INITIAL_TILES[size] || [64, 32, 16]);
     
     StateManager.setState(() => {
-      const newGrid = GridService.createEmptyGrid(size);
+      const newGrid = GridService.createEmptyGrid(size, null, gridType);
       for (let index = 0; index < initialTiles.length; index++) {
         if (index < positions.length) {
           const [r, c] = positions[index];
@@ -355,14 +408,15 @@ export class Game {
 
   handleSaveSettings() {
     const { game, ui } = StateManager.getState();
-    const { size, selectedSize } = game;
+    const { size, selectedSize, gridType = 'square', selectedGridType = 'square' } = game;
     const { gameMode } = ui;
     const newGameMode = UIService.getCurrentCarouselMode();
 
-    if (size !== selectedSize || gameMode !== newGameMode) {
+    if (size !== selectedSize || gridType !== selectedGridType || gameMode !== newGameMode) {
       GameLogic.saveCurrentGameStats(StateManager.getState());
       StateManager.setState({ 
         size: selectedSize, 
+        gridType: selectedGridType,
         gameMode: newGameMode,
         moves: 0,
         score: 0,
@@ -454,9 +508,9 @@ export class Game {
     StorageService.saveState();
   }
 
-  handleSizeSelection(newSize) {
-    StateManager.setState({ selectedSize: newSize });
-    UIService.highlightCurrentSize(newSize);
+  handleSizeSelection(newSize, newGridType = 'square') {
+    StateManager.setState({ selectedSize: newSize, selectedGridType: newGridType });
+    UIService.highlightCurrentSize(newSize, newGridType);
   }
 }
 

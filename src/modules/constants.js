@@ -110,6 +110,40 @@ export const DIRECTION_DELTAS = {
   'ArrowRight': [0, 1]
 };
 
+// Hexagonal grid direction deltas (cube coordinates: dx + dy + dz = 0)
+export const HEX_DIRECTION_DELTAS = {
+  'HexUpLeft': { dx: -1, dy: 1, dz: 0 },
+  'HexUpRight': { dx: 0, dy: 1, dz: -1 },
+  'HexLeft': { dx: -1, dy: 0, dz: 1 },
+  'HexRight': { dx: 1, dy: 0, dz: -1 },
+  'HexDownLeft': { dx: 0, dy: -1, dz: 1 },
+  'HexDownRight': { dx: 1, dy: -1, dz: 0 }
+};
+
+// Hexagonal grid initial tiles by radius/size (3x3x3: 19 cells, 5x5x5: 61 cells)
+export const HEX_INITIAL_TILES = {
+  3: [64, 32, 16],
+  5: [512, 256, 128, 64, 32]
+};
+
+// Hexagonal random tile values
+export const HEX_RANDOM_TILE_VALUES = {
+  3: () => Math.random() < 0.7 ? 16 : 32,
+  5: () => Math.random() < 0.7 ? 32 : 64
+};
+
+// Hexagonal spawn limits for infinity mode
+export const HEX_RANDOM_TILE_SPAWN_LIMITS = {
+  3: { maxGridSum: 80, minEmptyCells: 2 },
+  5: { maxGridSum: 512, minEmptyCells: 4 }
+};
+
+// Hexagonal initial tiles for Akure mode
+export const HEX_AKURE_INITIAL_TILES = {
+  3: [32, 16],
+  5: [2048]
+};
+
 // Animation class mappings
 export const ANIMATION_CLASSES = {
   SPLIT_DIRECTIONS: {

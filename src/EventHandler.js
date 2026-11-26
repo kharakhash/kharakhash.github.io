@@ -1,5 +1,6 @@
 import { ErrorHandler } from './modules/ErrorHandling.js';
 import { LevelEditor } from './levels-builder/LevelEditor.js';
+import { StateManager } from './modules/StateManager.js';
 import { DIRECTION_DELTAS, SWIPE_THRESHOLD } from './modules/constants.js';
 
 /**
@@ -80,23 +81,47 @@ export class EventHandler {
     this._addListener(this.elements.themeToggleBtn, 'change', this.handleThemeToggleChange, 'themeToggleBtn.change');
     this._addListener(this.elements.toggleDataValue, 'change', this.handleToggleDataValueChange, 'toggleDataValue.change');
     
-    // Size selection
+    // Size selection (square and hex)
     this.setupSizeSelection();
+
+    // Hex on-screen pad controls
+    this.setupHexPadControls();
 
     // Setup Level Editor controls
     this.setupEditorControls();
   }
 
   /**
-   * Sets up size selection event listeners.
+   * Sets up size selection event listeners for square and hex options.
    */
   setupSizeSelection() {
-    const sizeOptions = document.getElementById('sizeOptions');
-    if (!sizeOptions) return;
+    const sizeContainers = [
+      document.getElementById('sizeOptions'),
+      document.getElementById('hexSizeOptions')
+    ];
+    for (const container of sizeContainers) {
+      if (!container) continue;
+      const sizeSquares = container.querySelectorAll('.size-square');
+      for (const square of sizeSquares) {
+        this._addListener(square, 'click', this.handleSizeSelectionClick, 'size.selection');
+      }
+    }
+  }
 
-    const sizeSquares = sizeOptions.querySelectorAll('.size-square');
-    for (const square of sizeSquares) {
-      this._addListener(square, 'click', this.handleSizeSelectionClick, 'size.selection');
+  /**
+   * Sets up hexagonal directional pad click listeners.
+   */
+  setupHexPadControls() {
+    const hexPad = document.getElementById('hexControlsPad');
+    if (!hexPad) return;
+    const buttons = hexPad.querySelectorAll('.hex-pad-btn');
+    for (const btn of buttons) {
+      this._addListener(btn, 'click', (e) => {
+        const dir = e.currentTarget.dataset.dir;
+        if (dir) {
+          this.game.handleMove(dir);
+        }
+      }, 'hexPad.click');
     }
   }
 
@@ -104,9 +129,37 @@ export class EventHandler {
    * Sets up Level Editor interactive tool listeners.
    */
   setupEditorControls() {
+    // Mode toggle
+    if (this.elements.editorModeToggleBtn) {
+      this._addListener(this.elements.editorModeToggleBtn, 'click', () => {
+        LevelEditor.toggleMode();
+      }, 'editor.modeToggle');
+    }
+
+    // Move limit input
+    if (this.elements.editorMoveLimit) {
+      this._addListener(this.elements.editorMoveLimit, 'input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        LevelEditor.setMoveLimit(!isNaN(val) && val > 0 ? val : null);
+      }, 'editor.moveLimit');
+    }
+
     // Tabs: Initial vs Win Condition
     this._addListener(this.elements.editorTabInitial, 'click', () => LevelEditor.switchTab('initial'), 'editor.tabInitial');
     this._addListener(this.elements.editorTabWin, 'click', () => LevelEditor.switchTab('winCondition'), 'editor.tabWin');
+
+    // Quest Win Condition Type Buttons
+    if (this.elements.editorWinConditionAllCleared) {
+      this._addListener(this.elements.editorWinConditionAllCleared, 'click', () => {
+        LevelEditor.setWinConditionType('all_cleared');
+      }, 'editor.winAllCleared');
+    }
+
+    if (this.elements.editorWinConditionCustomGrid) {
+      this._addListener(this.elements.editorWinConditionCustomGrid, 'click', () => {
+        LevelEditor.setWinConditionType('custom_grid');
+      }, 'editor.winCustomGrid');
+    }
 
     // Tool palette buttons
     document.querySelectorAll('.editor-tool-btn').forEach(btn => {
@@ -129,8 +182,10 @@ export class EventHandler {
 
     // Editor Actions
     this._addListener(this.elements.editorSaveBtn, 'click', () => {
-      LevelEditor.saveLevel();
-      alert('Level saved successfully!');
+      const saved = LevelEditor.saveLevel();
+      if (saved) {
+        alert('Level saved successfully!');
+      }
     }, 'editor.save');
 
     this._addListener(this.elements.editorPlayBtn, 'click', () => {
@@ -157,18 +212,91 @@ export class EventHandler {
       }
     }, 'editor.importDsl');
 
+    // File Download & Upload
+    if (this.elements.editorDownloadDslBtn) {
+      this._addListener(this.elements.editorDownloadDslBtn, 'click', () => {
+        LevelEditor.downloadDSLFile();
+      }, 'editor.downloadDsl');
+    }
+
+    if (this.elements.editorUploadDslBtn && this.elements.editorFileInput) {
+      this._addListener(this.elements.editorUploadDslBtn, 'click', () => {
+        this.elements.editorFileInput.click();
+      }, 'editor.uploadDslClick');
+
+      this._addListener(this.elements.editorFileInput, 'change', (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          LevelEditor.importDSLFile(file);
+          e.target.value = '';
+        }
+      }, 'editor.fileInputChange');
+    }
+
     this._addListener(this.elements.editorLevelName, 'input', (e) => {
       LevelEditor.setName(e.target.value);
     }, 'editor.levelName');
+
+    // Quick Test Modal Controls
+    if (this.elements.editorTestCloseBtn) {
+      this._addListener(this.elements.editorTestCloseBtn, 'click', () => {
+        LevelEditor.closeTest();
+      }, 'editor.testClose');
+    }
+
+    if (this.elements.editorTestExitBtn) {
+      this._addListener(this.elements.editorTestExitBtn, 'click', () => {
+        LevelEditor.closeTest();
+      }, 'editor.testExit');
+    }
+
+    if (this.elements.editorTestRestartBtn) {
+      this._addListener(this.elements.editorTestRestartBtn, 'click', () => {
+        LevelEditor.restartTest();
+      }, 'editor.testRestart');
+    }
   }
 
   handleKeyDown(e) {
     if (e.key === 'Escape') {
+      if (LevelEditor.isTesting()) {
+        LevelEditor.closeTest();
+        return;
+      }
       UIService.hideBurgerMenu();
       return;
     }
+
+    const { gridType = 'square' } = StateManager.getGameState();
+    if (gridType === 'hex') {
+      const hexKeyMap = {
+        'KeyQ': 'HexUpLeft', 'q': 'HexUpLeft', 'Q': 'HexUpLeft', 'й': 'HexUpLeft', 'Й': 'HexUpLeft',
+        'KeyE': 'HexUpRight', 'e': 'HexUpRight', 'E': 'HexUpRight', 'у': 'HexUpRight', 'У': 'HexUpRight',
+        'KeyW': 'HexUpRight', 'w': 'HexUpRight', 'W': 'HexUpRight', 'ц': 'HexUpRight', 'Ц': 'HexUpRight',
+        'KeyA': 'HexLeft', 'a': 'HexLeft', 'A': 'HexLeft', 'ф': 'HexLeft', 'Ф': 'HexLeft',
+        'ArrowLeft': 'HexLeft',
+        'KeyD': 'HexRight', 'd': 'HexRight', 'D': 'HexRight', 'в': 'HexRight', 'В': 'HexRight',
+        'ArrowRight': 'HexRight',
+        'KeyZ': 'HexDownLeft', 'z': 'HexDownLeft', 'Z': 'HexDownLeft', 'я': 'HexDownLeft', 'Я': 'HexDownLeft',
+        'KeyC': 'HexDownRight', 'c': 'HexDownRight', 'C': 'HexDownRight', 'с': 'HexDownRight', 'С': 'HexDownRight',
+        'KeyX': 'HexDownRight', 'x': 'HexDownRight', 'X': 'HexDownRight', 'ч': 'HexDownRight', 'Ч': 'HexDownRight',
+        'ArrowUp': 'HexUpRight',
+        'ArrowDown': 'HexDownRight'
+      };
+      const hexDir = hexKeyMap[e.code] || hexKeyMap[e.key];
+      if (hexDir) {
+        e.preventDefault();
+        this.game.handleMove(hexDir);
+        return;
+      }
+    }
+
     if (Object.keys(DIRECTION_DELTAS).includes(e.key)) {
       e.preventDefault();
+      if (LevelEditor.isTesting()) {
+        LevelEditor.handleTestMove(e.key);
+        return;
+      }
       this.game.handleMove(e.key);
     }
   }
@@ -186,7 +314,36 @@ export class EventHandler {
     const touch = e.changedTouches[0];
     const deltaX = touch.clientX - this.touchStartX;
     const deltaY = touch.clientY - this.touchStartY;
-    
+    const distance = Math.hypot(deltaX, deltaY);
+    if (distance < SWIPE_THRESHOLD) {
+      this.touchStartX = this.touchStartY = null;
+      return;
+    }
+
+    const { gridType = 'square' } = StateManager.getGameState();
+    if (gridType === 'hex') {
+      const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI); // -180 to 180
+      let direction = null;
+      if (angle >= -30 && angle < 30) {
+        direction = 'HexRight';
+      } else if (angle >= 30 && angle < 90) {
+        direction = 'HexDownRight';
+      } else if (angle >= 90 && angle < 150) {
+        direction = 'HexDownLeft';
+      } else if (angle >= 150 || angle < -150) {
+        direction = 'HexLeft';
+      } else if (angle >= -150 && angle < -90) {
+        direction = 'HexUpLeft';
+      } else if (angle >= -90 && angle < -30) {
+        direction = 'HexUpRight';
+      }
+      if (direction) {
+        this.game.handleMove(direction);
+      }
+      this.touchStartX = this.touchStartY = null;
+      return;
+    }
+
     let direction = null;
 
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
@@ -204,7 +361,11 @@ export class EventHandler {
     }
     
     if (direction) {
-      this.game.handleMove(direction);
+      if (LevelEditor.isTesting()) {
+        LevelEditor.handleTestMove(direction);
+      } else {
+        this.game.handleMove(direction);
+      }
     }
     
     this.touchStartX = this.touchStartY = null;
@@ -289,7 +450,8 @@ export class EventHandler {
   handleSizeSelectionClick(event) {
     const square = event.currentTarget;
     const newSize = parseInt(square.dataset.size, 10);
-    this.game.handleSizeSelection(newSize);
+    const newGridType = square.dataset.gridType || 'square';
+    this.game.handleSizeSelection(newSize, newGridType);
   }
 
   /**

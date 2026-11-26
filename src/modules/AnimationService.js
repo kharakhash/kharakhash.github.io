@@ -51,16 +51,54 @@ export const AnimationService = (() => {
    * @param {Object} elements - Cached DOM elements.
    */
   const animateSplitAppear = (parentRow, parentCol, targetRow, targetCol, value, deltaRow, deltaCol, elements) => {
-    const { size } = StateManager.getGameState();
+    const { size, gridType = 'square' } = StateManager.getGameState();
     const { showValues } = StateManager.getUIState();
     const gameField = elements.game; // Assuming 'game' is cached in elements
     if (!gameField) return;
     
-    const cellSize = gameField.offsetWidth / size;
-    
-    // Create and setup temporary animation element
-    const tempCell = _createTempAnimationCell(parentRow, parentCol, value, cellSize, showValues);
+    const parentCell = _getCellElement(elements, parentRow, parentCol);
     const targetCell = _getCellElement(elements, targetRow, targetCol);
+
+    let startX, startY, endX, endY, width, height;
+
+    if (gridType === 'hex' && parentCell && targetCell && typeof parentCell.getBoundingClientRect === 'function') {
+      const gameRect = gameField.getBoundingClientRect();
+      const parentRect = parentCell.getBoundingClientRect();
+      const targetRect = targetCell.getBoundingClientRect();
+
+      startX = parentRect.left - gameRect.left;
+      startY = parentRect.top - gameRect.top;
+      endX = targetRect.left - gameRect.left;
+      endY = targetRect.top - gameRect.top;
+      width = parentRect.width;
+      height = parentRect.height;
+    } else {
+      const cellSize = gameField.offsetWidth / size;
+      startX = parentCol * cellSize;
+      startY = parentRow * cellSize;
+      endX = targetCol * cellSize;
+      endY = targetRow * cellSize;
+      width = cellSize;
+      height = cellSize;
+    }
+
+    // Create and setup temporary animation element
+    const tempCell = document.createElement('div');
+    tempCell.className = gridType === 'hex' ? 'cell hex-cell split-appear-anim' : 'cell split-appear-anim';
+    Object.assign(tempCell.style, {
+      position: 'absolute',
+      zIndex: '2',
+      width: `${width}px`,
+      height: `${height}px`,
+      left: '0px',
+      top: '0px',
+      transform: `translate(${startX}px, ${startY}px)`
+    });
+
+    tempCell.dataset.value = value;
+    if (showValues) {
+      tempCell.textContent = value ? Math.log2(value) - 1 : '';
+    }
     
     if (targetCell) {
       _hideTargetCell(targetCell);
@@ -69,7 +107,10 @@ export const AnimationService = (() => {
     gameField.appendChild(tempCell);
     
     // Animate to target position
-    _animateToTarget(tempCell, targetRow, targetCol, cellSize);
+    requestAnimationFrame(() => {
+      tempCell.style.transition = `transform ${ANIMATION_DURATION}ms`;
+      tempCell.style.transform = `translate(${endX}px, ${endY}px)`;
+    });
     
     // Clean up after animation
     setTimeout(() => {

@@ -86,7 +86,8 @@ export const StatisticsService = (() => {
       } = game;
 
       const summaryMode = mode.charAt(0).toUpperCase() + mode.slice(1);
-      const summarySize = size ? `${size}x${size}` : '—';
+      const isHex = game.gridType === 'hex';
+      const summarySize = size ? (isHex ? `${size}x${size}x${size}` : (typeof size === 'string' && size.includes('x') ? size : `${size}x${size}`)) : '—';
 
       const card = document.createElement('div');
       card.className = 'game-card';

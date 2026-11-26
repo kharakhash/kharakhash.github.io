@@ -1,19 +1,6 @@
-# OS junk
-.DS_Store
-**/.DS_Store
-
-# Editor
-.vscode/
-.idea/
-
-# Node
-node_modules/
-
-# Local backup archives (keep out of the repo)
-/Архів*.zip
-
-# Standalone tooling not part of the shipped web game
+/Архів 2.zip
+/Архів.zip
 /minisat
 /sat
 /tests
-/editor
+.DS_Store

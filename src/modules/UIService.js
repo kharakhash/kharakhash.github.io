@@ -1,4 +1,5 @@
 import { StateManager } from './StateManager.js';
+import { GridService } from './GridService.js';
 import { PerformanceUtils } from './PerformanceUtils.js';
 import { ErrorHandler } from './ErrorHandling.js';
 import { ANIMATION_DURATION, MODES, MODE_INFO } from './constants.js';
@@ -53,7 +54,7 @@ export const UIService = (() => {
    * @param {Object} state - The current game state.
    */
   const renderGrid = (state) => {
-    const { grid, size, showValues, cellTypes, lockedCells } = state;
+    const { grid, size, showValues, cellTypes, lockedCells, gridType = 'square' } = state;
     if (!_elements.game) return;
 
     const cells = _elements.cells;
@@ -63,8 +64,12 @@ export const UIService = (() => {
         : (lockedCells instanceof Set ? Array.from(lockedCells) : [])
     );
 
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) {
+    const isHex = gridType === 'hex';
+    const numRows = isHex ? 2 * size - 1 : size;
+
+    for (let r = 0; r < numRows; r++) {
+      const numCols = isHex ? GridService.hexRowLength(size, r) : size;
+      for (let c = 0; c < numCols; c++) {
         const val = grid?.[r]?.[c];
         const cell = cells?.[r]?.[c] || document.getElementById(`cell-${r}-${c}`);
         if (!cell) continue;
@@ -124,8 +129,11 @@ export const UIService = (() => {
       // Calculate filled / total playable slots
       let totalPlayable = 0;
       let filledCount = 0;
-      for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
+      const isHex = state.gridType === 'hex';
+      const numRows = isHex ? 2 * size - 1 : size;
+      for (let r = 0; r < numRows; r++) {
+        const numCols = isHex ? GridService.hexRowLength(size, r) : size;
+        for (let c = 0; c < numCols; c++) {
           if (!cellTypes || cellTypes[r]?.[c] !== 'inactive') {
             totalPlayable++;
             if (grid?.[r]?.[c] !== null && grid?.[r]?.[c] !== undefined && grid[r][c] > 0) {
@@ -187,7 +195,8 @@ export const UIService = (() => {
     updateCarouselUI(state.gameMode);
 
     const preferredSize = typeof state.selectedSize === 'number' ? state.selectedSize : state.size;
-    highlightCurrentSize(preferredSize);
+    const preferredGridType = state.selectedGridType || state.gridType || 'square';
+    highlightCurrentSize(preferredSize, preferredGridType);
   };
 
   /**
@@ -231,15 +240,17 @@ export const UIService = (() => {
   };
 
   /**
-   * Highlights currently selected grid size.
+   * Highlights currently selected grid size and grid type.
    * @param {number} currentSize - The current grid size from state.
+   * @param {string} [currentGridType='square'] - 'square' or 'hex'.
    */
-  const highlightCurrentSize = (currentSize) => {
+  const highlightCurrentSize = (currentSize, currentGridType = 'square') => {
     if (typeof document === 'undefined') return;
     const sizeSquares = document.querySelectorAll('.size-square');
     sizeSquares.forEach(square => {
       const squareSize = parseInt(square.dataset.size, 10);
-      if (squareSize === currentSize) {
+      const squareType = square.dataset.gridType || 'square';
+      if (squareSize === currentSize && squareType === currentGridType) {
         square.classList.add('selected');
       } else {
         square.classList.remove('selected');

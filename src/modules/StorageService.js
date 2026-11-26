@@ -3,6 +3,7 @@ import { StateManager } from './StateManager.js';
 
 const LOCAL_STORAGE_KEYS = {
   SIZE: 'SIZE',
+  GRID_TYPE: 'gridType',
   THEME: 'theme',
   SHOW_VALUES: 'showValues',
   GAME_MODE: 'gameMode',
@@ -18,6 +19,8 @@ const DEFAULT_STATS_STORE = {
     gameCount: 0
   }
 };
+
+const _memoryStorage = new Map();
 
 /**
  * Determines whether localStorage is usable in the current environment.
@@ -44,40 +47,48 @@ const isStorageAvailable = (() => {
 })();
 
 /**
- * Writes a string value to localStorage if the API is available.
+ * Writes a string value to localStorage or in-memory fallback.
  */
 const safeSetItem = (key, value) => {
-  if (!isStorageAvailable() || typeof window === 'undefined' || !window.localStorage) return;
-  try {
-    window.localStorage.setItem(key, value);
-  } catch (error) {
-    ErrorHandler.handle(error, 'StorageService.safeSetItem');
+  if (isStorageAvailable() && typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(key, value);
+      return;
+    } catch (error) {
+      ErrorHandler.handle(error, 'StorageService.safeSetItem');
+    }
   }
+  _memoryStorage.set(key, String(value));
 };
 
 /**
- * Reads a value from localStorage safely (returns null when unavailable).
+ * Reads a value from localStorage or in-memory fallback safely.
  */
 const safeGetItem = (key) => {
-  if (!isStorageAvailable() || typeof window === 'undefined' || !window.localStorage) return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch (error) {
-    ErrorHandler.handle(error, 'StorageService.safeGetItem');
-    return null;
+  if (isStorageAvailable() && typeof window !== 'undefined' && window.localStorage) {
+    try {
+      return window.localStorage.getItem(key);
+    } catch (error) {
+      ErrorHandler.handle(error, 'StorageService.safeGetItem');
+      return null;
+    }
   }
+  return _memoryStorage.has(key) ? _memoryStorage.get(key) : null;
 };
 
 /**
- * Removes a key from localStorage when the API is accessible.
+ * Removes a key from localStorage or in-memory fallback.
  */
 const safeRemoveItem = (key) => {
-  if (!isStorageAvailable() || typeof window === 'undefined' || !window.localStorage) return;
-  try {
-    window.localStorage.removeItem(key);
-  } catch (error) {
-    ErrorHandler.handle(error, 'StorageService.safeRemoveItem');
+  if (isStorageAvailable() && typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.removeItem(key);
+      return;
+    } catch (error) {
+      ErrorHandler.handle(error, 'StorageService.safeRemoveItem');
+    }
   }
+  _memoryStorage.delete(key);
 };
 
 /**
@@ -122,10 +133,11 @@ export const StorageService = (() => {
    */
   const saveState = () => {
     try {
-      const { size } = StateManager.getGameState();
+      const { size, gridType } = StateManager.getGameState();
       const { theme, showValues, gameMode } = StateManager.getUIState();
 
       safeSetItem(LOCAL_STORAGE_KEYS.SIZE, String(size));
+      safeSetItem(LOCAL_STORAGE_KEYS.GRID_TYPE, gridType || 'square');
       safeSetItem(LOCAL_STORAGE_KEYS.THEME, theme);
       safeSetItem(LOCAL_STORAGE_KEYS.SHOW_VALUES, String(showValues));
       safeSetItem(LOCAL_STORAGE_KEYS.GAME_MODE, gameMode);
@@ -141,6 +153,7 @@ export const StorageService = (() => {
   const loadState = () => {
     if (!isStorageAvailable()) return {};
     const savedSize = safeGetItem(LOCAL_STORAGE_KEYS.SIZE);
+    const savedGridType = safeGetItem(LOCAL_STORAGE_KEYS.GRID_TYPE);
     const savedTheme = safeGetItem(LOCAL_STORAGE_KEYS.THEME);
     const showValues = safeGetItem(LOCAL_STORAGE_KEYS.SHOW_VALUES);
     const savedGameMode = safeGetItem(LOCAL_STORAGE_KEYS.GAME_MODE);
@@ -149,6 +162,14 @@ export const StorageService = (() => {
     if (savedSize && !Number.isNaN(Number(savedSize))) {
       loadedState.size = parseInt(savedSize, 10);
       loadedState.selectedSize = loadedState.size;
+    }
+
+    if (savedGridType === 'hex') {
+      loadedState.gridType = 'hex';
+      loadedState.selectedGridType = 'hex';
+    } else {
+      loadedState.gridType = 'square';
+      loadedState.selectedGridType = 'square';
     }
 
     loadedState.theme = savedTheme === 'light' ? 'light' : 'dark';
@@ -202,10 +223,26 @@ export const StorageService = (() => {
 
   /**
    * Saves a completed game's statistics to localStorage.
+   * Prevents storing duplicate entries for the same finished game.
    * @param {Object} gameStats - Object containing game statistics (date, size, moves, score, mode, etc.).
    */
   const saveGameStats = (gameStats) => {
     const currentStore = loadStatsStore();
+
+    // Deduplication guard: ignore if the last saved game has identical stats within a recent window (15s)
+    const latestGame = currentStore.games[0];
+    if (latestGame &&
+        latestGame.mode === gameStats.mode &&
+        latestGame.size === gameStats.size &&
+        latestGame.moves === gameStats.moves &&
+        latestGame.score === gameStats.score) {
+      const now = Date.now();
+      const lastRecordedTime = latestGame.recordedAt ? new Date(latestGame.recordedAt).getTime() : 0;
+      if (now - lastRecordedTime < 15000) {
+        return currentStore;
+      }
+    }
+
     const nextGame = {
       ...gameStats,
       recordedAt: new Date().toISOString()
