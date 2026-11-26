@@ -21,7 +21,7 @@ const buildStatsPayload = (state) => {
     };
   }
 
-  if ((state.gameMode === 'quest' || state.gameMode === 'akure') && state.levelMoves > 0) {
+  if (state.gameMode === 'quest' && state.levelMoves > 0) {
     return {
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
@@ -88,38 +88,11 @@ const questStrategy = {
   },
 };
 
-const akureStrategy = {
-  applyMoveCounters: (prevState) => ({
-    levelMoves: prevState.levelMoves + 1,
-    totalMoves: prevState.totalMoves + 1,
-  }),
-  applyScore: (prevState, delta) => {
-    if (!delta) return {};
-    return {
-      levelScore: prevState.levelScore + delta,
-      totalScore: prevState.totalScore + delta,
-    };
-  },
-  onLose: (state) => {
-    saveCurrentGameStats(state);
-    EventBus.emit('game:lose', { mode: 'akure', message: 'field not filled, try again?' });
-    UIService.showAkureFailPopup('field not filled, try again?');
-    UIService.hideGameOverPopup();
-    StateManager.setState({ totalMoves: 0, totalScore: 0 });
-  },
-  onWin: (state) => {
-    saveCurrentGameStats(state);
-    EventBus.emit('game:win', { mode: 'akure', moves: state.levelMoves, score: state.levelScore });
-    UIService.showAkureWinPopup(state.levelMoves, state.levelScore);
-  },
-};
-
 // --- Mode registry ---
 
 const modeRegistry = new Map([
   ['infinity', infinityStrategy],
   ['quest', questStrategy],
-  ['akure', akureStrategy],
 ]);
 
 /**

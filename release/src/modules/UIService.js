@@ -103,15 +103,14 @@ export const UIService = (() => {
   };
 
   /**
-   * Updates score and moves display across all 3 game modes.
+   * Updates score and moves display across game modes.
    * @param {Object} state - The current game state.
    */
   const updateScoreAndMoves = (state) => {
-    const { gameMode, moves, score, levelMoves, totalMoves, levelScore, totalScore, grid, size, cellTypes } = state;
+    const { gameMode, moves, score, levelMoves, totalMoves, levelScore, totalScore } = state;
 
     _elements.infinityScoreDisplay?.classList.add('hidden');
     _elements.questScoreDisplay?.classList.add('hidden');
-    _elements.akureScoreDisplay?.classList.add('hidden');
 
     if (gameMode === 'infinity') {
       _elements.infinityScoreDisplay?.classList.remove('hidden');
@@ -123,38 +122,6 @@ export const UIService = (() => {
       if (_elements.totalMovesDisplay) _elements.totalMovesDisplay.textContent = totalMoves;
       if (_elements.levelScore) _elements.levelScore.textContent = levelScore;
       if (_elements.totalScoreDisplay) _elements.totalScoreDisplay.textContent = totalScore;
-    } else if (gameMode === 'akure') {
-      _elements.akureScoreDisplay?.classList.remove('hidden');
-      
-      // Calculate filled / total playable slots
-      let totalPlayable = 0;
-      let filledCount = 0;
-      const isHex = state.gridType === 'hex';
-      const numRows = isHex ? 2 * size - 1 : size;
-      for (let r = 0; r < numRows; r++) {
-        const numCols = isHex ? GridService.hexRowLength(size, r) : size;
-        for (let c = 0; c < numCols; c++) {
-          if (!cellTypes || cellTypes[r]?.[c] !== 'inactive') {
-            totalPlayable++;
-            if (grid?.[r]?.[c] !== null && grid?.[r]?.[c] !== undefined && grid[r][c] > 0) {
-              filledCount++;
-            }
-          }
-        }
-      }
-      
-      if (_elements.akureFilled) _elements.akureFilled.textContent = `${filledCount}/${totalPlayable}`;
-      if (_elements.akureLevelMoves) {
-        _elements.akureLevelMoves.textContent = state.akureMaxMoves 
-          ? `${levelMoves}/${state.akureMaxMoves}` 
-          : `${levelMoves}`;
-      }
-      if (_elements.akureLevelBadge) {
-        _elements.akureLevelBadge.textContent = state.akureModeType === 'quest'
-          ? `Lvl ${state.akureQuestLevel || 1}`
-          : 'Random';
-      }
-      if (_elements.akureLevelScore) _elements.akureLevelScore.textContent = levelScore;
     }
   };
 
@@ -201,7 +168,7 @@ export const UIService = (() => {
 
   /**
    * Updates the Mode Carousel to display the active mode.
-   * @param {string} currentMode - 'infinity' | 'quest' | 'akure'
+   * @param {string} currentMode - 'infinity' | 'quest'
    */
   const updateCarouselUI = (currentMode) => {
     const track = document.getElementById('modeCarouselTrack');
@@ -300,11 +267,13 @@ export const UIService = (() => {
   /**
    * Shows settings overlay.
    */
+  /**
+   * Shows settings overlay.
+   */
   const showSettings = () => {
     hideBurgerMenu();
     toggleSectionVisibility(_elements.gameContainer, false);
     toggleSectionVisibility(_elements.settingsContainer, true);
-    toggleSectionVisibility(_elements.editorContainer, false);
   };
 
   /**
@@ -317,25 +286,6 @@ export const UIService = (() => {
   };
 
   /**
-   * Shows Level Editor container.
-   */
-  const showEditor = () => {
-    hideBurgerMenu();
-    toggleSectionVisibility(_elements.gameContainer, false);
-    toggleSectionVisibility(_elements.settingsContainer, false);
-    toggleSectionVisibility(_elements.statisticsContainer, false);
-    toggleSectionVisibility(_elements.editorContainer, true);
-  };
-
-  /**
-   * Hides Level Editor container.
-   */
-  const hideEditor = () => {
-    toggleSectionVisibility(_elements.editorContainer, false);
-    toggleSectionVisibility(_elements.gameContainer, true);
-  };
-
-  /**
    * Shows statistics overlay and renders statistics.
    */
   const showStatistics = () => {
@@ -343,7 +293,6 @@ export const UIService = (() => {
     toggleSectionVisibility(_elements.gameContainer, false);
     toggleSectionVisibility(_elements.settingsContainer, false);
     toggleSectionVisibility(_elements.statisticsContainer, true);
-    toggleSectionVisibility(_elements.editorContainer, false);
     StateManager.setState({ isOverlayActive: true });
     // StatisticsService.renderStatistics() will be called by EventHandler
   };
@@ -357,7 +306,6 @@ export const UIService = (() => {
     StateManager.setState({ isOverlayActive: false });
     hideGameOverPopup(); // Ensure popup is hidden
     hideQuestFailPopup();
-    hideAkureFailPopup();
   };
 
   /**
@@ -422,47 +370,6 @@ export const UIService = (() => {
     }
   };
 
-  /**
-   * Hides Akure win popup.
-   */
-  const hideAkureWinPopup = () => {
-    toggleSectionVisibility(_elements.akureWinPopup, false);
-  };
-
-  /**
-   * Shows Akure win popup.
-   * @param {number} moves
-   * @param {number} score
-   */
-  const showAkureWinPopup = (moves, score) => {
-    if (_elements.akureWinPopup) {
-      if (_elements.akureWinMoves) _elements.akureWinMoves.textContent = moves;
-      if (_elements.akureWinScore) _elements.akureWinScore.textContent = score;
-      toggleSectionVisibility(_elements.akureWinPopup, true);
-    }
-  };
-
-  /**
-   * Hides Akure fail popup.
-   */
-  const hideAkureFailPopup = () => {
-    toggleSectionVisibility(_elements.akureFailPopup, false);
-  };
-
-  /**
-   * Shows Akure fail popup.
-   * @param {string} message
-   */
-  const showAkureFailPopup = (message) => {
-    if (_elements.akureFailPopup) {
-      const messageNode = _elements.akureFailPopup.querySelector('p');
-      if (messageNode) {
-        messageNode.textContent = message;
-      }
-      toggleSectionVisibility(_elements.akureFailPopup, true);
-    }
-  };
-
   // Subscribe to state changes for automatic re-rendering
   StateManager.subscribe(render);
 
@@ -476,8 +383,6 @@ export const UIService = (() => {
     toggleBurgerMenu,
     showSettings,
     hideSettings,
-    showEditor,
-    hideEditor,
     showStatistics,
     hideStatistics,
     hideGameOverPopup,
@@ -486,10 +391,6 @@ export const UIService = (() => {
     showQuestFailPopup,
     hideQuestWinPopup,
     showQuestWinPopup,
-    showAkureWinPopup,
-    hideAkureWinPopup,
-    showAkureFailPopup,
-    hideAkureFailPopup,
     highlightCurrentSize, // Exported for settings interaction
     updateSettingsUI, // Exported for settings update
     updateCarouselUI,

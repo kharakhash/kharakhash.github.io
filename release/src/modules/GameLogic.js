@@ -155,9 +155,9 @@ export const GameLogic = (() => {
       moves: 0,
       score: 0,
       levelMoves: 0,
-      totalMoves: (state.gameMode === 'quest' || state.gameMode === 'akure') ? 0 : state.totalMoves,
+      totalMoves: state.gameMode === 'quest' ? 0 : state.totalMoves,
       levelScore: 0,
-      totalScore: (state.gameMode === 'quest' || state.gameMode === 'akure') ? 0 : state.totalScore,
+      totalScore: state.gameMode === 'quest' ? 0 : state.totalScore,
       history: [],
       isProcessing: false,
       grid: GridService.createEmptyGrid(state.size),
@@ -167,8 +167,6 @@ export const GameLogic = (() => {
     UIService.hideGameOverPopup();
     UIService.hideQuestWinPopup();
     UIService.hideQuestFailPopup();
-    UIService.hideAkureWinPopup();
-    UIService.hideAkureFailPopup();
 
     return { action: 'PLACE_INITIAL_TILES' };
   };
@@ -220,56 +218,6 @@ export const GameLogic = (() => {
   };
 
   /**
-   * Restarts game in Akure mode with the same initial grid.
-   * @returns {{ action: string } | null}
-   */
-  const tryAgainAkureMode = () => {
-    const state = StateManager.getState();
-    if (state.gameMode === 'akure' && state.initialGrid.length > 0) {
-      StateManager.setState((prevState) => ({
-        levelMoves: 0,
-        levelScore: 0,
-        history: [],
-        isProcessing: false,
-        grid: GridService.cloneGrid(prevState.initialGrid),
-      }));
-      UIService.hideAkureFailPopup();
-      UIService.hideGameOverPopup();
-      return null;
-    }
-    return restart();
-  };
-
-  /**
-   * Restarts game in Akure mode with a newly generated grid.
-   * @returns {{ action: string }}
-   */
-  const tryAnotherAkureMode = () => {
-    const result = restart();
-    UIService.hideAkureFailPopup();
-    return result;
-  };
-
-  /**
-   * Starts the next akure level.
-   * @returns {{ action: string }}
-   */
-  const startNextAkureLevel = () => {
-    UIService.hideAkureWinPopup();
-    const currentQuestLvl = StorageService.getAkureQuestLevel() || 1;
-    const nextLevel = currentQuestLvl + 1;
-    StorageService.setAkureQuestLevel(nextLevel);
-    StateManager.setState((prevState) => ({
-      akureQuestLevel: nextLevel,
-      levelMoves: 0,
-      levelScore: 0,
-      history: [],
-      grid: GridService.createEmptyGrid(prevState.size),
-    }));
-    return { action: 'PLACE_INITIAL_TILES' };
-  };
-
-  /**
    * Checks win/lose conditions and delegates mode-specific reactions.
    * @param {Object} state - Current flattened game state.
    */
@@ -278,16 +226,6 @@ export const GameLogic = (() => {
 
     if (state.gameMode === 'quest') {
       const outcome = GameCore.checkQuestOutcome(state);
-      if (outcome === 'win') {
-        modeRules.onWin(state);
-      } else if (outcome === 'lose') {
-        modeRules.onLose(state);
-      }
-      return;
-    }
-
-    if (state.gameMode === 'akure') {
-      const outcome = GameCore.checkAkureOutcome(state);
       if (outcome === 'win') {
         modeRules.onWin(state);
       } else if (outcome === 'lose') {
@@ -310,9 +248,6 @@ export const GameLogic = (() => {
     tryAgainQuestMode,
     tryAnotherQuestMode,
     startNextQuestLevel,
-    tryAgainAkureMode,
-    tryAnotherAkureMode,
-    startNextAkureLevel,
     checkGameStatus,
     saveCurrentGameStats,
   };
