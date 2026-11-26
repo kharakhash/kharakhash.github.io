@@ -81,47 +81,22 @@ export class EventHandler {
     this._addListener(this.elements.themeToggleBtn, 'change', this.handleThemeToggleChange, 'themeToggleBtn.change');
     this._addListener(this.elements.toggleDataValue, 'change', this.handleToggleDataValueChange, 'toggleDataValue.change');
     
-    // Size selection (square and hex)
+    // Size selection
     this.setupSizeSelection();
-
-    // Hex on-screen pad controls
-    this.setupHexPadControls();
 
     // Setup Level Editor controls
     this.setupEditorControls();
   }
 
   /**
-   * Sets up size selection event listeners for square and hex options.
+   * Sets up size selection event listeners.
    */
   setupSizeSelection() {
-    const sizeContainers = [
-      document.getElementById('sizeOptions'),
-      document.getElementById('hexSizeOptions')
-    ];
-    for (const container of sizeContainers) {
-      if (!container) continue;
-      const sizeSquares = container.querySelectorAll('.size-square');
-      for (const square of sizeSquares) {
-        this._addListener(square, 'click', this.handleSizeSelectionClick, 'size.selection');
-      }
-    }
-  }
-
-  /**
-   * Sets up hexagonal directional pad click listeners.
-   */
-  setupHexPadControls() {
-    const hexPad = document.getElementById('hexControlsPad');
-    if (!hexPad) return;
-    const buttons = hexPad.querySelectorAll('.hex-pad-btn');
-    for (const btn of buttons) {
-      this._addListener(btn, 'click', (e) => {
-        const dir = e.currentTarget.dataset.dir;
-        if (dir) {
-          this.game.handleMove(dir);
-        }
-      }, 'hexPad.click');
+    const container = document.getElementById('sizeOptions');
+    if (!container) return;
+    const sizeSquares = container.querySelectorAll('.size-square');
+    for (const square of sizeSquares) {
+      this._addListener(square, 'click', this.handleSizeSelectionClick, 'size.selection');
     }
   }
 
@@ -267,30 +242,6 @@ export class EventHandler {
       return;
     }
 
-    const { gridType = 'square' } = StateManager.getGameState();
-    if (gridType === 'hex') {
-      const hexKeyMap = {
-        'KeyQ': 'HexUpLeft', 'q': 'HexUpLeft', 'Q': 'HexUpLeft', 'й': 'HexUpLeft', 'Й': 'HexUpLeft',
-        'KeyE': 'HexUpRight', 'e': 'HexUpRight', 'E': 'HexUpRight', 'у': 'HexUpRight', 'У': 'HexUpRight',
-        'KeyW': 'HexUpRight', 'w': 'HexUpRight', 'W': 'HexUpRight', 'ц': 'HexUpRight', 'Ц': 'HexUpRight',
-        'KeyA': 'HexLeft', 'a': 'HexLeft', 'A': 'HexLeft', 'ф': 'HexLeft', 'Ф': 'HexLeft',
-        'ArrowLeft': 'HexLeft',
-        'KeyD': 'HexRight', 'd': 'HexRight', 'D': 'HexRight', 'в': 'HexRight', 'В': 'HexRight',
-        'ArrowRight': 'HexRight',
-        'KeyZ': 'HexDownLeft', 'z': 'HexDownLeft', 'Z': 'HexDownLeft', 'я': 'HexDownLeft', 'Я': 'HexDownLeft',
-        'KeyC': 'HexDownRight', 'c': 'HexDownRight', 'C': 'HexDownRight', 'с': 'HexDownRight', 'С': 'HexDownRight',
-        'KeyX': 'HexDownRight', 'x': 'HexDownRight', 'X': 'HexDownRight', 'ч': 'HexDownRight', 'Ч': 'HexDownRight',
-        'ArrowUp': 'HexUpRight',
-        'ArrowDown': 'HexDownRight'
-      };
-      const hexDir = hexKeyMap[e.code] || hexKeyMap[e.key];
-      if (hexDir) {
-        e.preventDefault();
-        this.game.handleMove(hexDir);
-        return;
-      }
-    }
-
     if (Object.keys(DIRECTION_DELTAS).includes(e.key)) {
       e.preventDefault();
       if (LevelEditor.isTesting()) {
@@ -316,30 +267,6 @@ export class EventHandler {
     const deltaY = touch.clientY - this.touchStartY;
     const distance = Math.hypot(deltaX, deltaY);
     if (distance < SWIPE_THRESHOLD) {
-      this.touchStartX = this.touchStartY = null;
-      return;
-    }
-
-    const { gridType = 'square' } = StateManager.getGameState();
-    if (gridType === 'hex') {
-      const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI); // -180 to 180
-      let direction = null;
-      if (angle >= -30 && angle < 30) {
-        direction = 'HexRight';
-      } else if (angle >= 30 && angle < 90) {
-        direction = 'HexDownRight';
-      } else if (angle >= 90 && angle < 150) {
-        direction = 'HexDownLeft';
-      } else if (angle >= 150 || angle < -150) {
-        direction = 'HexLeft';
-      } else if (angle >= -150 && angle < -90) {
-        direction = 'HexUpLeft';
-      } else if (angle >= -90 && angle < -30) {
-        direction = 'HexUpRight';
-      }
-      if (direction) {
-        this.game.handleMove(direction);
-      }
       this.touchStartX = this.touchStartY = null;
       return;
     }

@@ -9,7 +9,7 @@ import { AnimationService } from './modules/AnimationService.js';
 import { LevelEditor } from './levels-builder/LevelEditor.js';
 import { EventHandler } from './EventHandler.js';
 import { AkureLevelGenerator } from './modules/AkureLevelGenerator.js';
-import { DEFAULT_SIZE, INITIAL_TILES, HEX_INITIAL_TILES, AKURE_INITIAL_TILES, ANIMATION_DURATION } from './modules/constants.js';
+import { DEFAULT_SIZE, INITIAL_TILES, AKURE_INITIAL_TILES, ANIMATION_DURATION } from './modules/constants.js';
 
 export class Game {
   constructor() {
@@ -64,7 +64,7 @@ export class Game {
       'infinityScoreDisplay', 'questScoreDisplay', 'akureScoreDisplay',
       'levelMoves', 'totalMovesDisplay', 'levelScore', 'totalScoreDisplay',
       'akureFilled', 'akureLevelMoves', 'akureLevelScore', 'akureLevelBadge',
-      'game', 'hexControlsPad', 'scoreContainer', 'settingsBtn', 'cancelSettingsBtn'
+      'game', 'scoreContainer', 'settingsBtn', 'cancelSettingsBtn'
     ];
     
     for (const id of elementIds) {
@@ -123,50 +123,9 @@ export class Game {
     gameField.dataset.size = String(size);
     gameField.dataset.gridType = gridType;
 
-    const hexPad = this.elements.hexControlsPad;
-    if (hexPad) {
-      hexPad.classList.toggle('hidden', gridType !== 'hex');
-    }
-
-    if (gridType === 'hex') {
-      gameField.classList.add('game-hex');
-      gameField.style.display = 'flex';
-      gameField.style.gridTemplateColumns = '';
-      gameField.style.gridTemplateRows = '';
-
-      const numRows = 2 * size - 1;
-      const cellMatrix = [];
-
-      for (let r = 0; r < numRows; r++) {
-        const rowLen = GridService.hexRowLength(size, r);
-        const rowDiv = document.createElement('div');
-        rowDiv.className = 'hex-row';
-        rowDiv.id = `hex-row-${r}`;
-
-        const rowCells = [];
-        for (let c = 0; c < rowLen; c++) {
-          const cell = document.createElement('div');
-          cell.className = 'cell hex-cell';
-          cell.id = `cell-${r}-${c}`;
-
-          if (cellTypes && cellTypes[r]?.[c] === 'inactive') {
-            cell.classList.add('cell-inactive');
-          } else if (cellTypes && cellTypes[r]?.[c] === 'medium') {
-            cell.classList.add('cell-medium');
-          }
-
-          rowDiv.appendChild(cell);
-          rowCells.push(cell);
-        }
-        gameField.appendChild(rowDiv);
-        cellMatrix.push(rowCells);
-      }
-      this.elements.cells = cellMatrix;
-    } else {
-      gameField.classList.remove('game-hex');
-      gameField.style.display = 'grid';
-      gameField.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
-      gameField.style.gridTemplateRows = `repeat(${size}, 1fr)`;
+    gameField.style.display = 'grid';
+    gameField.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+    gameField.style.gridTemplateRows = `repeat(${size}, 1fr)`;
 
       const cellMatrix = Array.from({ length: size }, () => Array(size).fill(null));
       for (let r = 0; r < size; r++) {
@@ -204,13 +163,12 @@ export class Game {
   placeInitialTiles() {
     const { size, cellTypes, customLevelName, akureModeType, akureQuestLevel, gridType = 'square' } = StateManager.getGameState();
     const { gameMode } = StateManager.getUIState();
-    const isHex = gridType === 'hex';
     
     if (gameMode === 'akure') {
       if (customLevelName) return;
 
       const currentQuestLvl = StorageService.getAkureQuestLevel() || akureQuestLevel || 1;
-      const levelData = (akureModeType === 'quest' && !isHex)
+      const levelData = (akureModeType === 'quest')
         ? AkureLevelGenerator.getLevel(currentQuestLvl)
         : AkureLevelGenerator.generateRandomLevel(size, cellTypes, gridType);
 
@@ -249,9 +207,7 @@ export class Game {
       [positions[i], positions[j]] = [positions[j], positions[i]];
     }
 
-    const initialTiles = isHex
-      ? (HEX_INITIAL_TILES[size] || [64, 32, 16])
-      : (INITIAL_TILES[size] || [64, 32, 16]);
+    const initialTiles = INITIAL_TILES[size] || [64, 32, 16];
     
     StateManager.setState(() => {
       const newGrid = GridService.createEmptyGrid(size, null, gridType);
