@@ -11,7 +11,7 @@ export const StateManager = (() => {
     'isProcessing', 'lastMoveTime', 'touchStartX', 'touchStartY',
     'initialGrid', 'cellTypes', 'lockedCells', 'winConditionGrid'
   ]);
-  const UI_KEYS = new Set(['theme', 'showValues', 'gameMode', 'isOverlayActive']);
+  const UI_KEYS = new Set(['theme', 'showValues', 'gameMode', 'isOverlayActive', 'language']);
 
   const DEFAULT_GAME_STATE = {
     grid: [],
@@ -40,7 +40,8 @@ export const StateManager = (() => {
     theme: 'dark',
     showValues: true,
     gameMode: 'quest',
-    isOverlayActive: false
+    isOverlayActive: false,
+    language: 'uk'
   };
 
   let state = {
