@@ -9,6 +9,7 @@ import { AnimationService } from './modules/AnimationService.js';
 import { LevelEditor } from './levels-builder/LevelEditor.js';
 import { EventHandler } from './EventHandler.js';
 import { AkureLevelGenerator } from './modules/AkureLevelGenerator.js';
+import { I18nService } from './modules/I18nService.js';
 import { DEFAULT_SIZE, INITIAL_TILES, HEX_INITIAL_TILES, AKURE_INITIAL_TILES, ANIMATION_DURATION } from './modules/constants.js';
 
 export class Game {
@@ -23,6 +24,9 @@ export class Game {
       this.eventHandler = new EventHandler(this.elements, this);
       this.setupState();
       
+      const { language = 'uk' } = StateManager.getUIState();
+      I18nService.setLanguage(language);
+
       UIService.setElements(this.elements);
       StatisticsService.setElements(this.elements);
       LevelEditor.init(this.elements, this);
@@ -105,6 +109,7 @@ export class Game {
         theme: loadedState.theme || 'dark',
         showValues: loadedState.showValues ?? true,
         gameMode: loadedState.gameMode || 'infinity',
+        language: loadedState.language || 'uk',
         isOverlayActive: false,
       }
     });
@@ -511,6 +516,12 @@ export class Game {
   handleSizeSelection(newSize, newGridType = 'square') {
     StateManager.setState({ selectedSize: newSize, selectedGridType: newGridType });
     UIService.highlightCurrentSize(newSize, newGridType);
+  }
+
+  handleLanguageChange(lang) {
+    StateManager.setState({ language: lang });
+    I18nService.setLanguage(lang);
+    StorageService.saveState();
   }
 }
 

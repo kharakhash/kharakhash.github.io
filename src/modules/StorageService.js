@@ -7,6 +7,7 @@ const LOCAL_STORAGE_KEYS = {
   THEME: 'theme',
   SHOW_VALUES: 'showValues',
   GAME_MODE: 'gameMode',
+  LANGUAGE: 'game_language',
   STATS_STORE: 'gameStatsStore'
 };
 const STATS_SCHEMA_VERSION = 1;
@@ -134,13 +135,14 @@ export const StorageService = (() => {
   const saveState = () => {
     try {
       const { size, gridType } = StateManager.getGameState();
-      const { theme, showValues, gameMode } = StateManager.getUIState();
+      const { theme, showValues, gameMode, language } = StateManager.getUIState();
 
       safeSetItem(LOCAL_STORAGE_KEYS.SIZE, String(size));
       safeSetItem(LOCAL_STORAGE_KEYS.GRID_TYPE, gridType || 'square');
       safeSetItem(LOCAL_STORAGE_KEYS.THEME, theme);
       safeSetItem(LOCAL_STORAGE_KEYS.SHOW_VALUES, String(showValues));
       safeSetItem(LOCAL_STORAGE_KEYS.GAME_MODE, gameMode);
+      if (language) safeSetItem(LOCAL_STORAGE_KEYS.LANGUAGE, language);
     } catch (error) {
       ErrorHandler.handle(error, 'StorageService.saveState');
     }
@@ -157,6 +159,7 @@ export const StorageService = (() => {
     const savedTheme = safeGetItem(LOCAL_STORAGE_KEYS.THEME);
     const showValues = safeGetItem(LOCAL_STORAGE_KEYS.SHOW_VALUES);
     const savedGameMode = safeGetItem(LOCAL_STORAGE_KEYS.GAME_MODE);
+    const savedLanguage = safeGetItem(LOCAL_STORAGE_KEYS.LANGUAGE);
 
     const loadedState = {};
     if (savedSize && !Number.isNaN(Number(savedSize))) {
@@ -175,6 +178,7 @@ export const StorageService = (() => {
     loadedState.theme = savedTheme === 'light' ? 'light' : 'dark';
     loadedState.showValues = showValues !== 'false';
     loadedState.gameMode = ['quest', 'akure', 'infinity'].includes(savedGameMode) ? savedGameMode : 'infinity';
+    loadedState.language = (savedLanguage === 'en') ? 'en' : 'uk';
 
     return loadedState;
   };

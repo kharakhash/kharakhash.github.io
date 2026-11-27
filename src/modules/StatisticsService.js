@@ -1,5 +1,6 @@
 import { StorageService } from './StorageService.js';
 import { ErrorHandler } from './ErrorHandling.js';
+import { I18nService } from './I18nService.js';
 
 /**
  * StatisticsService - Manages game statistics and their rendering.
@@ -66,7 +67,7 @@ export const StatisticsService = (() => {
     if (allGames.length === 0) {
       const emptyMessage = document.createElement('div');
       emptyMessage.className = 'games-blocks-empty';
-      emptyMessage.textContent = 'no data yet...';
+      emptyMessage.textContent = I18nService.t('stats.noData', 'no data yet...');
       _elements.gamesList.appendChild(emptyMessage);
       return;
     }
@@ -85,7 +86,8 @@ export const StatisticsService = (() => {
         mode = '—',
       } = game;
 
-      const summaryMode = mode.charAt(0).toUpperCase() + mode.slice(1);
+      const modeKey = typeof mode === 'string' ? mode.toLowerCase() : '';
+      const summaryMode = I18nService.t(`modes.${modeKey}.name`, mode.charAt(0).toUpperCase() + mode.slice(1));
       const isHex = game.gridType === 'hex';
       const summarySize = size ? (isHex ? `${size}x${size}x${size}` : (typeof size === 'string' && size.includes('x') ? size : `${size}x${size}`)) : '—';
 
@@ -112,10 +114,10 @@ export const StatisticsService = (() => {
       statsGroup.className = 'game-card__stats';
 
       const movesInfo = document.createElement('span');
-      movesInfo.innerHTML = `<strong>Moves</strong><span>${moves}</span>`;
+      movesInfo.innerHTML = `<strong>${I18nService.t('stats.cardMoves', 'Moves')}</strong><span>${moves}</span>`;
 
       const scoreInfo = document.createElement('span');
-      scoreInfo.innerHTML = `<strong>Score</strong><span>${score}</span>`;
+      scoreInfo.innerHTML = `<strong>${I18nService.t('stats.cardScore', 'Score')}</strong><span>${score}</span>`;
 
       statsGroup.append(movesInfo, scoreInfo);
 
@@ -133,7 +135,7 @@ export const StatisticsService = (() => {
    * Handles clearing all statistics.
    */
   const clearStatistics = () => {
-    if (confirm('Are you sure?')) {
+    if (confirm(I18nService.t('stats.confirmClear', 'Are you sure you want to clear all game statistics?'))) {
       StorageService.clearAllGamesStats();
       renderStatistics(); // Re-render to show empty state
     }

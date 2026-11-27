@@ -24,7 +24,7 @@
   --cell-null: var(--bg-darker);
 }
 
-/* Пример использования переменных */
+/* CSS variable usage */
 #game {
   background-color: var(--bg-darkest);
 }
@@ -73,7 +73,7 @@ body {
   text-transform: uppercase;
   color: var(--text-main);
   font-weight: 400;
-  min-height: 100dvh; /* Изменено с height на min-height для лучшей адаптивности */
+  min-height: 100dvh; /* Responsive viewport height */
 }
 
 .app-container {
@@ -93,7 +93,7 @@ body {
   justify-content: center;
   width: 100%;
   min-height: 100dvh;
-  max-width: 500px; /* Ограничение, чтобы на больших экранах не растягивалось */
+  max-width: 500px; /* Constrain width on larger displays */
   container-type: inline-size;
   container-name: gameContainer;
 }
@@ -101,8 +101,8 @@ body {
 #settingsContainer {
   background: var(--bg-main);
   color: var(--text-main);
-  font-size: clamp(16px, 2.5vmin, 18px); /* Адаптивный размер шрифта */
-  min-height: 100dvh; /* Изменено с height на min-height */
+  font-size: clamp(16px, 2.5vmin, 18px); /* Responsive font size */
+  min-height: 100dvh; /* Responsive viewport height */
 }
 
 #statisticsContainer {
@@ -133,7 +133,7 @@ body {
 }
 
 #scoreContainer {
-  font-size: clamp(16px, 2.5vmin, 18px); /* Адаптивный размер шрифта */
+  font-size: clamp(16px, 2.5vmin, 18px); /* Responsive font size */
 }
 
 /* Unified card styling for score displays */
@@ -192,7 +192,7 @@ body {
     z-index: 1;
     position: relative;
     aspect-ratio: 1/1;
-    font-size: clamp(16px, 2.5vmin, 20px); /* Адаптивный размер шрифта для ячеек */
+    font-size: clamp(16px, 2.5vmin, 20px); /* Responsive cell font size */
   }
 
 
@@ -205,7 +205,7 @@ body {
     justify-content: center;
     font-size: 1.2em;
     font-weight: 500;
-    box-shadow: inset 2px 2px 0px 0px var(--bg-darky), inset -2px -2px 0px 0px var(--bg-dark);/* тёмная тень справа и снизу */
+    box-shadow: inset 2px 2px 0px 0px var(--bg-darky), inset -2px -2px 0px 0px var(--bg-dark); /* Dark inner shadow */
     transition: transform 0.3s ease-out, opacity 0.1s ease-out 0.3s; background-color: 0.5s ease-in-out;
   }
 
@@ -354,7 +354,7 @@ button {
   align-items: center;
   justify-content: center;
   padding: 10px 40px;
-  font-size: clamp(16px, 2.5vmin, 18px); /* Адаптивный размер шрифта */
+  font-size: clamp(16px, 2.5vmin, 18px); /* Responsive font size */
   font-size: 0.65rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -458,6 +458,60 @@ button {
   justify-content: flex-start;
   gap: 10px;
   padding: 20px;
+}
+
+.settings-control-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.lang-toggle-group {
+  display: flex;
+  width: 70px;
+  height: 36px;
+  background: var(--bg-darker);
+  border-radius: 5px;
+  overflow: hidden;
+  padding: 3px;
+  box-sizing: border-box;
+  gap: 2px;
+}
+
+.lang-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-sec);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.lang-btn:hover {
+  color: var(--text-main);
+}
+
+.lang-btn.active {
+  background: #ffffff;
+  color: var(--bg-darkest);
+}
+
+body.light-theme .lang-toggle-group {
+  background: var(--bg-darker);
+}
+
+body.light-theme .lang-btn.active {
+  background: var(--bg-dark);
+  color: #ffffff;
 }
 
 .statistics-content {
