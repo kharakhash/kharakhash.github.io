@@ -53,24 +53,25 @@ export const RANDOM_TILE_SPAWN_LIMITS = {
   11: { maxGridSum: 8192, minEmptyCells: 6 }
 };
 
+import { I18nService } from './I18nService.js';
+
 // Modes metadata for Carousel
 export const MODES = ['infinity', 'quest'];
 
+export const getModeInfo = (mode) => {
+  const m = mode || 'infinity';
+  return {
+    id: m,
+    name: I18nService.t(`modes.${m}.name`, m),
+    title: I18nService.t(`modes.${m}.title`, m),
+    badge: I18nService.t(`modes.${m}.badge`, m),
+    desc: I18nService.t(`modes.${m}.desc`, '')
+  };
+};
+
 export const MODE_INFO = {
-  infinity: {
-    id: 'infinity',
-    name: 'Infinity',
-    title: 'Infinity',
-    badge: 'Survival',
-    desc: 'Split tiles, clear twos, and score maximum points with new tiles spawning.'
-  },
-  quest: {
-    id: 'quest',
-    name: 'Quest',
-    title: 'Quest',
-    badge: 'Clearance',
-    desc: 'Clear the entire grid down to the very last cell by planning perfect splits.'
-  }
+  get infinity() { return getModeInfo('infinity'); },
+  get quest() { return getModeInfo('quest'); }
 };
 
 // Direction deltas for movement

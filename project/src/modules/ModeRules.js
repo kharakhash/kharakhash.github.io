@@ -2,6 +2,7 @@ import { StateManager } from './StateManager.js';
 import { StorageService } from './StorageService.js';
 import { UIService } from './UIService.js';
 import { EventBus } from './EventBus.js';
+import { I18nService } from './I18nService.js';
 
 /**
  * Builds a stats payload depending on current mode and meta counters.
@@ -56,8 +57,9 @@ const infinityStrategy = {
   },
   onLose: (state) => {
     saveCurrentGameStats(state);
-    EventBus.emit('game:lose', { mode: 'infinity', message: "you didn't reach the infinity" });
-    UIService.showGameOverPopup("you didn't reach the infinity");
+    const msg = I18nService.t('popup.infinityLose', "you didn't reach the infinity");
+    EventBus.emit('game:lose', { mode: 'infinity', message: msg });
+    UIService.showGameOverPopup(msg);
   },
   onWin: () => {},
 };
@@ -76,8 +78,9 @@ const questStrategy = {
   },
   onLose: (state) => {
     saveCurrentGameStats(state);
-    EventBus.emit('game:lose', { mode: 'quest', message: 'you lose, try again?' });
-    UIService.showQuestFailPopup('you lose, try again?');
+    const msg = I18nService.t('popup.questLose', 'you lose, try again?');
+    EventBus.emit('game:lose', { mode: 'quest', message: msg });
+    UIService.showQuestFailPopup(msg);
     UIService.hideGameOverPopup();
     StateManager.setState({ totalMoves: 0, totalScore: 0 });
   },
@@ -102,8 +105,9 @@ const akureStrategy = {
   },
   onLose: (state) => {
     saveCurrentGameStats(state);
-    EventBus.emit('game:lose', { mode: 'akure', message: 'field not filled, try again?' });
-    UIService.showAkureFailPopup('field not filled, try again?');
+    const msg = I18nService.t('popup.akureLose', 'field not filled, try again?');
+    EventBus.emit('game:lose', { mode: 'akure', message: msg });
+    UIService.showAkureFailPopup(msg);
     UIService.hideGameOverPopup();
     StateManager.setState({ totalMoves: 0, totalScore: 0 });
   },

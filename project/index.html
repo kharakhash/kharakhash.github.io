@@ -11,27 +11,27 @@
     <!-- Main Game Section -->
     <section id="gameContainer" class="game-container">
       <div id="mainButtonsContainer" class="fl-x-row-cow-container">
-        <button id="statisticsBtn">stats</button>
-        <button id="settingsBtn">options</button>
-        <button id="editorBtn">builder</button>
+        <button id="statisticsBtn" data-i18n="btn.stats">stats</button>
+        <button id="settingsBtn" data-i18n="btn.options">options</button>
+        <button id="editorBtn" data-i18n="btn.builder">builder</button>
       </div>
 
       <div id="scoreContainer" class="fl-x-row-cow-container">
         <div id="infinityScoreDisplay" class="score-display">
-          <span><strong>Moves</strong><span id="moves">0</span></span>
-          <span><strong>Score</strong><span id="score">0</span></span>
+          <span><strong data-i18n="hud.moves">Moves</strong><span id="moves">0</span></span>
+          <span><strong data-i18n="hud.score">Score</strong><span id="score">0</span></span>
         </div>
         <div id="questScoreDisplay" class="score-display hidden">
-          <span><strong>Level moves</strong><span id="levelMoves">0</span></span>
-          <span><strong>Level score</strong><span id="levelScore">0</span></span>
-          <span><strong>Total moves</strong><span id="totalMovesDisplay">0</span></span>
-          <span><strong>Total score</strong><span id="totalScoreDisplay">0</span></span>
+          <span><strong data-i18n="hud.levelMoves">Level moves</strong><span id="levelMoves">0</span></span>
+          <span><strong data-i18n="hud.levelScore">Level score</strong><span id="levelScore">0</span></span>
+          <span><strong data-i18n="hud.totalMoves">Total moves</strong><span id="totalMovesDisplay">0</span></span>
+          <span><strong data-i18n="hud.totalScore">Total score</strong><span id="totalScoreDisplay">0</span></span>
         </div>
         <div id="akureScoreDisplay" class="score-display hidden">
-          <span><strong>Filled</strong><span id="akureFilled">0/0</span></span>
-          <span><strong>Moves</strong><span id="akureLevelMoves">0</span></span>
-          <span id="akureStageBox"><strong>Stage</strong><span id="akureLevelBadge">Lvl 1</span></span>
-          <span><strong>Score</strong><span id="akureLevelScore">0</span></span>
+          <span><strong data-i18n="hud.filled">Filled</strong><span id="akureFilled">0/0</span></span>
+          <span><strong data-i18n="hud.moves">Moves</strong><span id="akureLevelMoves">0</span></span>
+          <span id="akureStageBox"><strong data-i18n="hud.stage">Stage</strong><span id="akureLevelBadge">Lvl 1</span></span>
+          <span><strong data-i18n="hud.score">Score</strong><span id="akureLevelScore">0</span></span>
         </div>
       </div>
       <div id="game"></div>
@@ -50,8 +50,8 @@
         </div>
       </div>
       <div id="buttonContainer" class="fl-x-row-cow-container">
-        <button id="restartBtn">restart</button>
-        <button id="undoBtn">undo</button>
+        <button id="restartBtn" data-i18n="btn.restart">restart</button>
+        <button id="undoBtn" data-i18n="btn.undo">undo</button>
       </div>
     </section>
 
@@ -61,14 +61,14 @@
         <!-- Mode Carousel -->
         <div class="mode-carousel-wrapper">
           <div class="mode-carousel-header">
-            <span class="mode-carousel-label">Game Mode</span>
+            <span class="mode-carousel-label" data-i18n="settings.gameMode">Game Mode</span>
             <span id="modeCarouselBadge" class="mode-badge">SURVIVAL</span>
           </div>
           <div class="mode-carousel">
             <button id="modeCarouselPrevBtn" class="carousel-arrow" type="button" aria-label="Previous mode">‹</button>
             <div class="mode-carousel-card">
-              <h3 id="modeCarouselTitle">Бесконечный</h3>
-              <p id="modeCarouselDesc">Дели плитки, очищай двойки и набирай рекордные очки со спавном новых тайлов.</p>
+              <h3 id="modeCarouselTitle">Нескінченний</h3>
+              <p id="modeCarouselDesc">Розділяйте плитки, прибирайте двійки та набирайте максимум очок під час появи нових плиток.</p>
             </div>
             <button id="modeCarouselNextBtn" class="carousel-arrow" type="button" aria-label="Next mode">›</button>
           </div>
@@ -89,27 +89,34 @@
           <div class="size-square" data-size="9" data-grid-type="square"><span>9x9</span></div>
           <div class="size-square" data-size="10" data-grid-type="square"><span>10x10</span></div>
         </div>
-        <div class="options-section-label">Hexagonal Board</div>
+        <div class="options-section-label" data-i18n="settings.hexBoard">Hexagonal Board</div>
         <div id="hexSizeOptions" class="hex-size-options">
           <div class="size-square hex-option" data-size="3" data-grid-type="hex"><span>3x3x3</span></div>
           <div class="size-square hex-option" data-size="5" data-grid-type="hex"><span>5x5x5</span></div>
         </div>
         <div id="settingsMedium">
+          <div class="settings-control-row">
+            <div class="lang-toggle-group" role="group" aria-label="Language">
+              <button type="button" class="lang-btn active" data-lang="uk">UKR</button>
+              <button type="button" class="lang-btn" data-lang="en">ENG</button>
+            </div>
+            <span data-i18n="settings.language">мова</span>
+          </div>
           <div class="switcher">
             <input type="checkbox" id="themeToggleBtn">
             <label for="themeToggleBtn" class="slider"></label>
-            <span>switch theme</span>
+            <span data-i18n="settings.switchTheme">switch theme</span>
           </div>
           <div class="switcher">
             <input type="checkbox" id="toggleDataValue" checked="">
             <label for="toggleDataValue" class="slider"></label>
-            <span>show values</span>
+            <span data-i18n="settings.showValues">show values</span>
           </div>
         </div>
       </div>
       <div id="settingsButtonsContainer" class="fl-x-row-cow-container">
-        <button id="saveSettingsBtn">apply</button>
-        <button id="cancelSettingsBtn">back</button>
+        <button id="saveSettingsBtn" data-i18n="btn.apply">apply</button>
+        <button id="cancelSettingsBtn" data-i18n="btn.back">back</button>
       </div>
     </section>
 
@@ -240,10 +247,10 @@
     <section id="statisticsContainer" class="statistics-container hidden">
       <div class="statistics-content">
         <div class="stats-summary">
-          <div>moves record: <span id="recordMoves">0</span></div>
-          <div>score record: <span id="recordScore">0</span></div>
-          <div>total moves: <span id="totalMoves">0</span></div>
-          <div>total score: <span id="totalScore">0</span></div>
+          <div><span data-i18n="stats.recordMoves">moves record:</span> <span id="recordMoves">0</span></div>
+          <div><span data-i18n="stats.recordScore">score record:</span> <span id="recordScore">0</span></div>
+          <div><span data-i18n="stats.totalMoves">total moves:</span> <span id="totalMoves">0</span></div>
+          <div><span data-i18n="stats.totalScore">total score:</span> <span id="totalScore">0</span></div>
         </div>
         <div class="games-blocks-wrapper">
           <div id="gamesList" class="games-blocks" aria-live="polite">
@@ -252,62 +259,59 @@
         </div>
       </div>
       <div id="statisticsButtonsContainer" class="fl-x-row-cow-container">
-        <button id="clearStatisticsBtn" class="clear-button">clear statistics</button>
-        <button id="backFromStatisticsBtn">back</button>
+        <button id="clearStatisticsBtn" class="clear-button" data-i18n="stats.clearBtn">clear statistics</button>
+        <button id="backFromStatisticsBtn" data-i18n="stats.backBtn">back</button>
       </div>
     </section>
 
     <!-- Popups -->
     <section id="gameOverPopup" class="popup-container hidden">
       <div class="popup-content">
-        <h2>you failed!</h2>
-        <p>you didn't reach the infinity</p>
+        <h2 id="popupInfinityTitle" data-i18n="popup.infinityLose">you didn't reach the infinity</h2>
         <div class="popup-buttons">
-          <button id="tryAnotherInfinityBtn">try again</button>
+          <button id="tryAnotherInfinityBtn" data-i18n="popup.tryAgain">try again</button>
         </div>
       </div>
     </section>
 
     <section id="questFailPopup" class="popup-container hidden">
       <div class="popup-content">
-        <h2>game over!</h2>
-        <p>try again?</p>
+        <h2 id="popupQuestFailTitle" data-i18n="popup.questLose">you lose, try again?</h2>
         <div class="popup-buttons">
-          <button id="tryAgainBtn">try again</button>
-          <button id="tryAnotherBtn">try another</button>
+          <button id="tryAgainBtn" data-i18n="popup.tryAgain">try again</button>
+          <button id="tryAnotherBtn" data-i18n="popup.tryAnother">try another</button>
         </div>
       </div>
     </section>
 
     <section id="questWinPopup" class="popup-container hidden">
       <div class="popup-content">
-        <h2>quest complete!</h2>
-        <p>moves: <span id="winMoves">0</span></p>
-        <p>score: <span id="winScore">0</span></p>
+        <h2 data-i18n="popup.questWin">quest complete!</h2>
+        <p><span data-i18n="hud.moves">moves</span>: <span id="winMoves">0</span></p>
+        <p><span data-i18n="hud.score">score</span>: <span id="winScore">0</span></p>
         <div class="popup-buttons">
-          <button id="nextQuestLevelBtn">next level</button>
+          <button id="nextQuestLevelBtn" data-i18n="popup.nextLevel">next level</button>
         </div>
       </div>
     </section>
 
     <section id="akureWinPopup" class="popup-container hidden">
       <div class="popup-content">
-        <h2>akure complete!</h2>
-        <p>field filled in <span id="akureWinMoves">0</span> moves!</p>
-        <p>score: <span id="akureWinScore">0</span></p>
+        <h2 data-i18n="popup.akureWin">akure complete!</h2>
+        <p><span data-i18n="popup.fieldFilledIn">field filled in</span> <span id="akureWinMoves">0</span> <span data-i18n="popup.movesWord">moves</span>!</p>
+        <p><span data-i18n="hud.score">score</span>: <span id="akureWinScore">0</span></p>
         <div class="popup-buttons">
-          <button id="nextAkureLevelBtn">next level</button>
+          <button id="nextAkureLevelBtn" data-i18n="popup.nextLevel">next level</button>
         </div>
       </div>
     </section>
 
     <section id="akureFailPopup" class="popup-container hidden">
       <div class="popup-content">
-        <h2>akure failed!</h2>
-        <p>moves ran out before field was filled!</p>
+        <h2 id="popupAkureFailTitle" data-i18n="popup.akureLose">field not filled, try again?</h2>
         <div class="popup-buttons">
-          <button id="tryAgainAkureBtn">try again</button>
-          <button id="tryAnotherAkureBtn">try another</button>
+          <button id="tryAgainAkureBtn" data-i18n="popup.tryAgain">try again</button>
+          <button id="tryAnotherAkureBtn" data-i18n="popup.tryAnother">try another</button>
         </div>
       </div>
     </section>

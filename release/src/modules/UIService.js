@@ -2,6 +2,8 @@ import { StateManager } from './StateManager.js';
 import { GridService } from './GridService.js';
 import { PerformanceUtils } from './PerformanceUtils.js';
 import { ErrorHandler } from './ErrorHandling.js';
+import { EventBus } from './EventBus.js';
+import { I18nService } from './I18nService.js';
 import { ANIMATION_DURATION, MODES, MODE_INFO } from './constants.js';
 
 /**
@@ -22,6 +24,7 @@ export const UIService = (() => {
     _elements = elements;
     _lastGrid = null;
     _lastShowValues = null;
+    I18nService.applyTranslations();
   };
 
   /**
@@ -41,6 +44,9 @@ export const UIService = (() => {
    */
   const render = (state) => {
     if (typeof document === 'undefined') return;
+    if (state.language && state.language !== I18nService.getLanguage()) {
+      I18nService.setLanguage(state.language);
+    }
     applyTheme(state.theme);
     renderGrid(state);
     updateScoreAndMoves(state);
@@ -158,6 +164,13 @@ export const UIService = (() => {
     if (_elements.toggleDataValue) {
       _elements.toggleDataValue.checked = state.showValues;
     }
+
+    const currentLang = state.language || I18nService.getLanguage();
+    if (typeof document !== 'undefined') {
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === currentLang);
+      });
+    }
     
     updateCarouselUI(state.gameMode);
 
@@ -183,9 +196,9 @@ export const UIService = (() => {
     }
 
     const modeData = MODE_INFO[currentMode] || MODE_INFO.infinity;
-    if (title) title.textContent = modeData.title;
-    if (badge) badge.textContent = modeData.badge;
-    if (desc) desc.textContent = modeData.desc;
+    if (title) title.textContent = I18nService.t(`modes.${currentMode}.title`, modeData.title);
+    if (badge) badge.textContent = I18nService.t(`modes.${currentMode}.badge`, modeData.badge);
+    if (desc) desc.textContent = I18nService.t(`modes.${currentMode}.desc`, modeData.desc);
 
     // Update dot indicators
     if (indicators) {
@@ -323,7 +336,7 @@ export const UIService = (() => {
     if (_elements.gameOverPopup) {
       const messageNode = _elements.gameOverPopup.querySelector('p');
       if (messageNode) {
-        messageNode.textContent = message;
+        messageNode.textContent = I18nService.t('popup.infinityLose', message || "you didn't reach the infinity");
       }
       toggleSectionVisibility(_elements.gameOverPopup, true);
     }
@@ -344,7 +357,7 @@ export const UIService = (() => {
     if (_elements.questFailPopup) {
       const messageNode = _elements.questFailPopup.querySelector('p');
       if (messageNode) {
-        messageNode.textContent = message;
+        messageNode.textContent = I18nService.t('popup.questLose', message || 'you lose, try again?');
       }
       toggleSectionVisibility(_elements.questFailPopup, true);
     }
@@ -372,6 +385,13 @@ export const UIService = (() => {
 
   // Subscribe to state changes for automatic re-rendering
   StateManager.subscribe(render);
+
+  // Subscribe to i18n language change events
+  EventBus.on('i18n:change', () => {
+    const currentState = StateManager.getState();
+    updateCarouselUI(currentState.gameMode);
+    updateSettingsUI(currentState);
+  });
 
   return {
     setElements, // Export the setter for elements

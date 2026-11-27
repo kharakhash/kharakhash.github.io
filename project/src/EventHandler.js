@@ -81,6 +81,17 @@ export class EventHandler {
     this._addListener(this.elements.themeToggleBtn, 'change', this.handleThemeToggleChange, 'themeToggleBtn.change');
     this._addListener(this.elements.toggleDataValue, 'change', this.handleToggleDataValueChange, 'toggleDataValue.change');
     
+    // Language toggle buttons
+    const langBtns = document.querySelectorAll('.lang-btn');
+    langBtns.forEach(btn => {
+      this._addListener(btn, 'click', (e) => {
+        const lang = e.currentTarget.getAttribute('data-lang');
+        if (lang) {
+          this.game.handleLanguageChange(lang);
+        }
+      }, 'langBtn.click');
+    });
+
     // Size selection (square and hex)
     this.setupSizeSelection();
 
